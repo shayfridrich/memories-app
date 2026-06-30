@@ -1,4 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
+import { db, storage } from "./firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // ── DESIGN TOKENS ──────────────────────────────────────────────
 const STYLES = `
@@ -820,12 +823,55 @@ function StepSummary({ pkg, photos, style, music, customTrack, onBack }) {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [orderId] = useState(() => Math.random().toString(36).substr(2, 8).toUpperCase());
 
   const styleObj = STYLES_DATA.find(s => s.id === style);
   const trackObj = music === "custom" ? { name: customTrack?.name || "שיר מותאם אישית", artist: "העלאה אישית" } : ALL_TRACKS.find(t => t.id === music);
 
   const inputSt = { width: "100%", background: "#0d0e14", border: "1px solid #3a3b4a", borderRadius: 8, padding: "11px 14px", color: "#e8e2d9", fontSize: 13, fontFamily: "'Inter',sans-serif", outline: "none", marginTop: 5, display: "block", transition: "border-color 0.2s" };
+
+  const handleSubmit = async () => {
+    if (!name || !phone) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. העלאת תמונות ל-Storage
+      const photoURLs = await Promise.all(photos.map(async (photo, idx) => {
+        const response = await fetch(photo.url);
+        const blob = await response.blob();
+        const storageRef = ref(storage, `orders/${orderId}/photo-${idx + 1}.jpg`);
+        await uploadBytes(storageRef, blob);
+        const url = await getDownloadURL(storageRef);
+        return { index: idx + 1, url, name: photo.name };
+      }));
+
+      // 2. שמירת פרטי ההזמנה ב-Firestore
+      await addDoc(collection(db, "orders"), {
+        orderId,
+        name,
+        phone,
+        notes,
+        package: pkg.name,
+        packagePrice: pkg.price,
+        photoCount: photos.length,
+        photos: photoURLs,
+        style: styleObj?.name || style,
+        music: music === "custom" ? customTrack?.name : trackObj?.name,
+        musicArtist: music === "custom" ? "העלאה אישית" : trackObj?.artist,
+        status: "חדשה",
+        createdAt: serverTimestamp(),
+      });
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error(err);
+      setError("אירעה שגיאה בשליחת ההזמנה. נסה שוב.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (submitted) {
     return (
@@ -877,9 +923,16 @@ function StepSummary({ pkg, photos, style, music, customTrack, onBack }) {
           <textarea style={{ ...inputSt, resize: "vertical", minHeight: 70 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="לדוגמא: מתנה ליום הולדת, שם הילד הוא..." />
         </div>
       </div>
+      {error && (
+        <div style={{ marginTop: 14, padding: "10px 14px", background: "rgba(220,50,50,0.1)", border: "1px solid rgba(220,50,50,0.3)", borderRadius: 8, color: "#ff6b6b", fontSize: 13 }}>
+          {error}
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28 }}>
-        <button className="btn-ghost" onClick={onBack}>→ חזרה</button>
-        <button className="btn-gold" onClick={() => { if (name && phone) setSubmitted(true); }} disabled={!name || !phone}>🎬 שלח הזמנה</button>
+        <button className="btn-ghost" onClick={onBack} disabled={loading}>→ חזרה</button>
+        <button className="btn-gold" onClick={handleSubmit} disabled={!name || !phone || loading}>
+          {loading ? "⏳ שולח הזמנה..." : "🎬 שלח הזמנה"}
+        </button>
       </div>
     </div>
   );
