@@ -938,8 +938,160 @@ function StepSummary({ pkg, photos, style, music, customTrack, onBack }) {
   );
 }
 
+// ── ADMIN PAGE ────────────────────────────────────────────────
+const ADMIN_PASSWORD = "moments2024admin";
+
+function AdminPage() {
+  const [authed, setAuthed] = useState(false);
+  const [pass, setPass] = useState("");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const { getDocs, collection: col, updateDoc, doc, orderBy, query } = require ? null : null;
+
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const { getDocs, collection: fsCol, query: fsQuery, orderBy: fsOrderBy } = await import("firebase/firestore");
+      const q = fsQuery(fsCol(db, "orders"), fsOrderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const updateStatus = async (docId, status) => {
+    const { updateDoc: upDoc, doc: fsDoc } = await import("firebase/firestore");
+    await upDoc(fsDoc(db, "orders", docId), { status });
+    setOrders(prev => prev.map(o => o.id === docId ? { ...o, status } : o));
+    if (selectedOrder?.id === docId) setSelectedOrder(prev => ({ ...prev, status }));
+  };
+
+  if (!authed) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0d0e14", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ background: "#15161f", border: "1px solid #2a2b38", borderRadius: 16, padding: 40, width: 340, textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🔐</div>
+          <h2 style={{ color: "#e8e2d9", marginBottom: 8, fontFamily: "'Playfair Display', serif" }}>פאנל ניהול</h2>
+          <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>רגעים של החיים</p>
+          <input
+            type="password"
+            placeholder="סיסמה"
+            value={pass}
+            onChange={e => setPass(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && pass === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); } }}
+            style={{ width: "100%", background: "#0d0e14", border: "1px solid #3a3b4a", borderRadius: 8, padding: "11px 14px", color: "#e8e2d9", fontSize: 13, outline: "none", marginBottom: 14, textAlign: "right", direction: "rtl" }}
+          />
+          <button
+            onClick={() => { if (pass === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); } else alert("סיסמה שגויה"); }}
+            style={{ width: "100%", background: "linear-gradient(135deg,#c9a84c,#e8c96a)", color: "#0d0e14", border: "none", borderRadius: 40, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+          >
+            כניסה
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const statusColor = { "חדשה": "#c9a84c", "בטיפול": "#4a9eff", "הושלמה": "#5cc97a" };
+
+  return (
+    <div dir="rtl" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ borderBottom: "1px solid #1e1f2e", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: "#c9a84c" }}>🎬 פאנל ניהול הזמנות</h1>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "#6b6c7e" }}>{orders.length} הזמנות</span>
+          <button onClick={loadOrders} style={{ background: "#15161f", border: "1px solid #3a3b4a", color: "#e8e2d9", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12 }}>🔄 רענן</button>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", height: "calc(100vh - 65px)" }}>
+
+        {/* Orders list */}
+        <div style={{ width: selectedOrder ? 380 : "100%", borderLeft: "1px solid #1e1f2e", overflowY: "auto", padding: 16 }}>
+          {loading && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>טוען הזמנות...</div>}
+          {!loading && orders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>אין הזמנות עדיין</div>}
+          {orders.map(order => (
+            <div
+              key={order.id}
+              onClick={() => setSelectedOrder(order)}
+              style={{ background: selectedOrder?.id === order.id ? "rgba(201,168,76,0.08)" : "#15161f", border: `1px solid ${selectedOrder?.id === order.id ? "#c9a84c" : "#2a2b38"}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, cursor: "pointer", transition: "all 0.2s" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontWeight: 700, color: "#e8e2d9" }}>{order.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: statusColor[order.status] || "#6b6c7e", background: "rgba(0,0,0,0.3)", padding: "2px 10px", borderRadius: 20 }}>{order.status}</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>{order.phone} · {order.package} · {order.packagePrice}</div>
+              <div style={{ fontSize: 11, color: "#4a4b5e", display: "flex", justifyContent: "space-between" }}>
+                <span>#{order.orderId}</span>
+                <span>{order.createdAt?.toDate?.()?.toLocaleDateString("he-IL") || ""}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Order detail */}
+        {selectedOrder && (
+          <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20 }}>פרטי הזמנה #{selectedOrder.orderId}</h2>
+              <button onClick={() => setSelectedOrder(null)} style={{ background: "transparent", border: "1px solid #3a3b4a", color: "#6b6c7e", borderRadius: 8, padding: "4px 12px", cursor: "pointer" }}>✕ סגור</button>
+            </div>
+
+            {/* Status buttons */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {["חדשה", "בטיפול", "הושלמה"].map(s => (
+                <button key={s} onClick={() => updateStatus(selectedOrder.id, s)}
+                  style={{ padding: "7px 18px", borderRadius: 20, border: `2px solid ${statusColor[s]}`, background: selectedOrder.status === s ? statusColor[s] : "transparent", color: selectedOrder.status === s ? "#0d0e14" : statusColor[s], fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Details */}
+            <div style={{ background: "#15161f", borderRadius: 12, padding: "4px 16px", marginBottom: 20 }}>
+              {[
+                ["שם", selectedOrder.name],
+                ["טלפון", selectedOrder.phone],
+                ["חבילה", `${selectedOrder.package} · ${selectedOrder.packagePrice}`],
+                ["סגנון", selectedOrder.style],
+                ["מוזיקה", `${selectedOrder.music} — ${selectedOrder.musicArtist}`],
+                ["תמונות", `${selectedOrder.photoCount} תמונות`],
+                ["הערות", selectedOrder.notes || "—"],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #2a2b38", fontSize: 13 }}>
+                  <span style={{ color: "#6b6c7e" }}>{k}</span>
+                  <span style={{ color: "#e8e2d9", fontWeight: 500 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Photos */}
+            <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>תמונות ({selectedOrder.photoCount})</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+              {(selectedOrder.photos || []).map((photo, i) => (
+                <a key={i} href={photo.url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "block", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2b38", textDecoration: "none" }}>
+                  <img src={photo.url} alt={`תמונה ${photo.index}`} style={{ width: "100%", height: 100, objectFit: "cover", display: "block" }} />
+                  <div style={{ padding: "4px 8px", fontSize: 10, color: "#6b6c7e", background: "#15161f" }}>תמונה {photo.index} ↗</div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN APP ──────────────────────────────────────────────────
 export default function App() {
+  const isAdmin = window.location.pathname === "/admin";
+  if (isAdmin) return <AdminPage />;
+
   const [pkg, setPkg] = useState(null);
   const [step, setStep] = useState(0); // 0=upload 1=style 2=music 3=summary
   const [photos, setPhotos] = useState([]);
