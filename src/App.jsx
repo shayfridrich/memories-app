@@ -1088,10 +1088,7 @@ function AdminPage() {
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────
-export default function App() {
-  const isAdmin = window.location.pathname === "/admin";
-  if (isAdmin) return <AdminPage />;
-
+function MainApp() {
   const [pkg, setPkg] = useState(null);
   const [step, setStep] = useState(0); // 0=upload 1=style 2=music 3=summary
   const [photos, setPhotos] = useState([]);
@@ -1175,4 +1172,9 @@ export default function App() {
       </a>
     </>
   );
+}
+
+export default function App() {
+  if (window.location.pathname === "/admin") return <AdminPage />;
+  return <MainApp />;
 }
