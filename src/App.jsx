@@ -71,7 +71,7 @@ const STYLES = `
   /* Timeline gallery */
   .timeline-wrap { margin-top: 20px; }
   .timeline-photo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .timeline-photo-box { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; flex-shrink: 0; cursor: grab; border: 2px solid transparent; transition: all 0.2s; }
+  .timeline-photo-box { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; flex-shrink: 0; cursor: grab; border: 2px solid transparent; transition: all 0.2s; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .timeline-photo-box.drag-target { border-color: #c9a84c; transform: scale(1.05); }
   .timeline-photo-box.dragging { opacity: 0.35; }
   .timeline-photo-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -447,6 +447,8 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const inputRef = useRef();
+  const touchDraggedId = useRef(null);
+  const touchDragOverId = useRef(null);
 
   const maxPhotos = pkg.photos;
 
@@ -485,6 +487,46 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
     setDraggedId(null); setDragOverId(null);
   };
   const onItemDragEnd = () => { setDraggedId(null); setDragOverId(null); };
+
+  const onTouchStart = (e, id) => {
+    touchDraggedId.current = id;
+    setDraggedId(id);
+  };
+  const onTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const boxes = document.querySelectorAll('[data-photo-id]');
+    boxes.forEach(box => {
+      const rect = box.getBoundingClientRect();
+      if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+          touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+        const targetId = parseFloat(box.dataset.photoId);
+        if (targetId !== touchDraggedId.current) {
+          setDragOverId(targetId);
+          touchDragOverId.current = targetId;
+        }
+      }
+    });
+  };
+  const onTouchEnd = () => {
+    const fromId = touchDraggedId.current;
+    const toId = touchDragOverId.current;
+    if (fromId && toId && fromId !== toId) {
+      setPhotos(prev => {
+        const arr = [...prev];
+        const fi = arr.findIndex(p => p.id === fromId);
+        const ti = arr.findIndex(p => p.id === toId);
+        if (fi === -1 || ti === -1) return prev;
+        const [item] = arr.splice(fi, 1);
+        arr.splice(ti, 0, item);
+        return arr;
+      });
+    }
+    touchDraggedId.current = null;
+    touchDragOverId.current = null;
+    setDraggedId(null);
+    setDragOverId(null);
+  };
 
   const updateNote = (index, val) => {
     setSceneNotes(prev => {
@@ -559,11 +601,16 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
                 <div className="timeline-photo-row">
                   <div
                     className={`timeline-photo-box ${isTarget ? "drag-target" : ""} ${isDragging ? "dragging" : ""}`}
+                    data-photo-id={photo.id}
                     draggable
                     onDragStart={e => onItemDragStart(e, photo.id)}
                     onDragOver={e => onItemDragOver(e, photo.id)}
                     onDrop={e => onItemDrop(e, photo.id)}
                     onDragEnd={onItemDragEnd}
+                    onTouchStart={e => onTouchStart(e, photo.id)}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    style={{ touchAction: "none" }}
                   >
                     <img src={photo.url} alt="" draggable={false} />
                     <div className="photo-num">{idx + 1}</div>
