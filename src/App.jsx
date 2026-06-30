@@ -1175,6 +1175,6 @@ function MainApp() {
 }
 
 export default function App() {
-  if (window.location.pathname === "/admin") return <AdminPage />;
+  if (window.location.search.includes("admin=true")) return <AdminPage />;
   return <MainApp />;
 }
