@@ -948,8 +948,6 @@ function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const { getDocs, collection: col, updateDoc, doc, orderBy, query } = require ? null : null;
-
   const loadOrders = async () => {
     setLoading(true);
     try {
