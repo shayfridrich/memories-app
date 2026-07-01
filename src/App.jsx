@@ -1080,24 +1080,31 @@ function AdminPage() {
             {/* Photos */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h3 style={{ fontSize: 14, color: "#c9a84c" }}>תמונות ({selectedOrder.photoCount})</h3>
-              <a
-                href={`https://firebasestorage.googleapis.com/v0/b/moments-of-life-dd5d8.firebasestorage.app/o/orders%2F${selectedOrder.orderId}%2F?alt=media`}
-                onClick={e => {
-                  e.preventDefault();
-                  (selectedOrder.photos || []).forEach((photo, i) => {
-                    setTimeout(() => {
+              <button
+                onClick={async () => {
+                  for (let i = 0; i < (selectedOrder.photos || []).length; i++) {
+                    const photo = selectedOrder.photos[i];
+                    try {
+                      const res = await fetch(photo.url);
+                      const blob = await res.blob();
+                      const blobUrl = URL.createObjectURL(blob);
                       const a = document.createElement("a");
-                      a.href = photo.url;
+                      a.href = blobUrl;
                       a.download = `photo-${photo.index}.jpg`;
-                      a.target = "_blank";
+                      document.body.appendChild(a);
                       a.click();
-                    }, i * 500);
-                  });
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(blobUrl);
+                      await new Promise(r => setTimeout(r, 800));
+                    } catch(e) {
+                      window.open(photo.url, "_blank");
+                    }
+                  }
                 }}
-                style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", textDecoration: "none", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
+                style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
               >
                 ⬇️ הורד את כל התמונות
-              </a>
+              </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 20 }}>
               {(selectedOrder.photos || []).map((photo, i) => (
