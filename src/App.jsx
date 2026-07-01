@@ -818,7 +818,7 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
 }
 
 // ── STEP 4: Summary ────────────────────────────────────────────
-function StepSummary({ pkg, photos, style, music, customTrack, onBack }) {
+function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBack }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -847,12 +847,21 @@ function StepSummary({ pkg, photos, style, music, customTrack, onBack }) {
         return { index: idx + 1, url, name: photo.name };
       }));
 
-      // 2. שמירת פרטי ההזמנה ב-Firestore
+      // 2. העלאת שיר אישי אם יש
+      let customTrackURL = null;
+      if (music === "custom" && customTrack?.file) {
+        const trackRef = ref(storage, `orders/${orderId}/custom-track-${customTrack.name}`);
+        await uploadBytes(trackRef, customTrack.file);
+        customTrackURL = await getDownloadURL(trackRef);
+      }
+
+      // 3. שמירת פרטי ההזמנה ב-Firestore
       await addDoc(collection(db, "orders"), {
         orderId,
         name,
         phone,
         notes,
+        sceneNotes: sceneNotes || [],
         package: pkg.name,
         packagePrice: pkg.price,
         photoCount: photos.length,
@@ -860,6 +869,7 @@ function StepSummary({ pkg, photos, style, music, customTrack, onBack }) {
         style: styleObj?.name || style,
         music: music === "custom" ? customTrack?.name : trackObj?.name,
         musicArtist: music === "custom" ? "העלאה אישית" : trackObj?.artist,
+        customTrackURL: customTrackURL,
         status: "חדשה",
         createdAt: serverTimestamp(),
       });
@@ -1068,8 +1078,28 @@ function AdminPage() {
             </div>
 
             {/* Photos */}
-            <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>תמונות ({selectedOrder.photoCount})</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, color: "#c9a84c" }}>תמונות ({selectedOrder.photoCount})</h3>
+              <a
+                href={`https://firebasestorage.googleapis.com/v0/b/moments-of-life-dd5d8.firebasestorage.app/o/orders%2F${selectedOrder.orderId}%2F?alt=media`}
+                onClick={e => {
+                  e.preventDefault();
+                  (selectedOrder.photos || []).forEach((photo, i) => {
+                    setTimeout(() => {
+                      const a = document.createElement("a");
+                      a.href = photo.url;
+                      a.download = `photo-${photo.index}.jpg`;
+                      a.target = "_blank";
+                      a.click();
+                    }, i * 500);
+                  });
+                }}
+                style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", textDecoration: "none", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
+              >
+                ⬇️ הורד את כל התמונות
+              </a>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 20 }}>
               {(selectedOrder.photos || []).map((photo, i) => (
                 <a key={i} href={photo.url} target="_blank" rel="noopener noreferrer"
                   style={{ display: "block", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2b38", textDecoration: "none" }}>
@@ -1078,6 +1108,35 @@ function AdminPage() {
                 </a>
               ))}
             </div>
+
+            {/* Scene notes */}
+            {selectedOrder.sceneNotes && selectedOrder.sceneNotes.some(n => n) && (
+              <div style={{ marginBottom: 20 }}>
+                <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>הערות בין תמונות</h3>
+                <div style={{ background: "#15161f", borderRadius: 12, padding: "4px 16px" }}>
+                  {selectedOrder.sceneNotes.map((note, i) => note ? (
+                    <div key={i} style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid #2a2b38", fontSize: 13 }}>
+                      <span style={{ color: "#6b6c7e", flexShrink: 0 }}>אחרי תמונה {i + 1}:</span>
+                      <span style={{ color: "#e8e2d9" }}>{note}</span>
+                    </div>
+                  ) : null)}
+                </div>
+              </div>
+            )}
+
+            {/* Custom track */}
+            {selectedOrder.customTrackURL && (
+              <div style={{ marginBottom: 20 }}>
+                <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>שיר אישי</h3>
+                <div style={{ background: "#15161f", borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: "#e8e2d9", fontSize: 13 }}>{selectedOrder.music}</span>
+                  <a href={selectedOrder.customTrackURL} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: "#4a9eff", textDecoration: "none", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}>
+                    ⬇️ הורד שיר
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1142,7 +1201,7 @@ function MainApp() {
               {step === 0 && <StepUpload pkg={pkg} photos={photos} setPhotos={setPhotos} sceneNotes={sceneNotes} setSceneNotes={setSceneNotes} onNext={() => setStep(1)} onBack={() => setPkg(null)} />}
               {step === 1 && <StepStyle selected={selectedStyle} setSelected={setSelectedStyle} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
               {step === 2 && <StepMusic pkg={pkg} selected={selectedMusic} setSelected={setSelectedMusic} customTrack={customTrack} setCustomTrack={setCustomTrack} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-              {step === 3 && <StepSummary pkg={pkg} photos={photos} style={selectedStyle} music={selectedMusic} customTrack={customTrack} onBack={() => setStep(2)} />}
+              {step === 3 && <StepSummary pkg={pkg} photos={photos} sceneNotes={sceneNotes} style={selectedStyle} music={selectedMusic} customTrack={customTrack} onBack={() => setStep(2)} />}
             </>
           )}
         </div>
