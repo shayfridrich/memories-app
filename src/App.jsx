@@ -3,6 +3,35 @@ import { db, storage } from "./firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
+// ── EMAILJS — התראות מייל ──────────────────────────────────────
+// יש למלא את הפרטים האלה לאחר הרשמה חינמית ב-emailjs.com
+// מדריך מלא בהודעה בצ'אט
+const EMAILJS_PUBLIC_KEY = "NE3YZm-vpQZyEQ9hL";
+const EMAILJS_SERVICE_ID = "service_qbik3ut";
+const EMAILJS_TEMPLATE_CUSTOMER = "template_uzjjemc";
+const EMAILJS_TEMPLATE_ADMIN = "template_5cg5t9l";
+const ADMIN_EMAIL = "momentsoflife.770@gmail.com";
+
+async function sendEmail(templateId, templateParams) {
+  try {
+    const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: templateId,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: templateParams,
+      }),
+    });
+    if (!res.ok) {
+      console.error("שליחת מייל נכשלה:", await res.text());
+    }
+  } catch (e) {
+    console.error("שגיאה בשליחת מייל:", e);
+  }
+}
+
 // ── DESIGN TOKENS ──────────────────────────────────────────────
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
@@ -885,6 +914,33 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         createdAt: serverTimestamp(),
       });
 
+      // 4. שליחת מייל אישור ללקוח + מייל התראה לבעל העסק
+      await Promise.all([
+        sendEmail(EMAILJS_TEMPLATE_CUSTOMER, {
+          to_email: email,
+          first_name: firstName,
+          last_name: lastName,
+          order_id: orderId,
+          package_name: pkg.name,
+          package_price: pkg.price,
+        }),
+        sendEmail(EMAILJS_TEMPLATE_ADMIN, {
+          to_email: ADMIN_EMAIL,
+          first_name: firstName,
+          last_name: lastName,
+          customer_email: email,
+          phone,
+          city,
+          street,
+          house_number: houseNumber,
+          order_id: orderId,
+          package_name: pkg.name,
+          package_price: pkg.price,
+          photo_count: photos.length,
+          notes: notes || "—",
+        }),
+      ]);
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);
@@ -900,7 +956,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         <div className="success-ring">🎬</div>
         <h2 className="serif" style={{ fontSize: 28, marginBottom: 10, color: "#e8e2d9" }}>ההזמנה התקבלה!</h2>
         <p style={{ color: "#6b6c7e", fontSize: 14, lineHeight: 1.7, maxWidth: 380, margin: "0 auto 20px" }}>
-          תודה {firstName}! קיבלנו את ההזמנה שלך עם {photos.length} תמונות. ניצור איתך קשר ב-{phone} תוך 24 שעות.
+          תודה {firstName}! קיבלנו את כל הפרטים כדי לייצר עבורך את הסרטון. אנחנו כבר מתחילים לעבוד עליו וניצור איתך קשר בהקדם.
         </p>
         <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, padding: "14px 22px", display: "inline-block" }}>
           <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>מספר הזמנה</div>
