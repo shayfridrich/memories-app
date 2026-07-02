@@ -819,8 +819,13 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
 
 // ── STEP 4: Summary ────────────────────────────────────────────
 function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBack }) {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -833,7 +838,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
   const inputSt = { width: "100%", background: "#0d0e14", border: "1px solid #3a3b4a", borderRadius: 8, padding: "11px 14px", color: "#e8e2d9", fontSize: 13, fontFamily: "'Inter',sans-serif", outline: "none", marginTop: 5, display: "block", transition: "border-color 0.2s" };
 
   const handleSubmit = async () => {
-    if (!name || !phone) return;
+    if (!firstName || !lastName || !email || !phone || !city || !street || !houseNumber) return;
     setLoading(true);
     setError(null);
     try {
@@ -858,8 +863,14 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
       // 3. שמירת פרטי ההזמנה ב-Firestore
       await addDoc(collection(db, "orders"), {
         orderId,
-        name,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`.trim(),
+        email,
         phone,
+        city,
+        street,
+        houseNumber,
         notes: notes || "",
         sceneNotes: (sceneNotes || []).map(n => n || ""),
         package: pkg.name,
@@ -889,7 +900,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         <div className="success-ring">🎬</div>
         <h2 className="serif" style={{ fontSize: 28, marginBottom: 10, color: "#e8e2d9" }}>ההזמנה התקבלה!</h2>
         <p style={{ color: "#6b6c7e", fontSize: 14, lineHeight: 1.7, maxWidth: 380, margin: "0 auto 20px" }}>
-          תודה {name}! קיבלנו את ההזמנה שלך עם {photos.length} תמונות. ניצור איתך קשר ב-{phone} תוך 24 שעות.
+          תודה {firstName}! קיבלנו את ההזמנה שלך עם {photos.length} תמונות. ניצור איתך קשר ב-{phone} תוך 24 שעות.
         </p>
         <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, padding: "14px 22px", display: "inline-block" }}>
           <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>מספר הזמנה</div>
@@ -920,13 +931,37 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         ))}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>שם פרטי *</label>
+            <input style={inputSt} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="ישראל" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>שם משפחה *</label>
+            <input style={inputSt} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="ישראלי" />
+          </div>
+        </div>
         <div>
-          <label style={{ fontSize: 12, color: "#6b6c7e" }}>שם מלא *</label>
-          <input style={inputSt} value={name} onChange={e => setName(e.target.value)} placeholder="ישראל ישראלי" />
+          <label style={{ fontSize: 12, color: "#6b6c7e" }}>אימייל *</label>
+          <input type="email" style={inputSt} value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" />
         </div>
         <div>
           <label style={{ fontSize: 12, color: "#6b6c7e" }}>טלפון *</label>
           <input style={inputSt} value={phone} onChange={e => setPhone(e.target.value)} placeholder="050-0000000" />
+        </div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>עיר *</label>
+            <input style={inputSt} value={city} onChange={e => setCity(e.target.value)} placeholder="תל אביב" />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>רחוב *</label>
+            <input style={inputSt} value={street} onChange={e => setStreet(e.target.value)} placeholder="הרצל" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>מספר בית *</label>
+            <input style={inputSt} value={houseNumber} onChange={e => setHouseNumber(e.target.value)} placeholder="12" />
+          </div>
         </div>
         <div>
           <label style={{ fontSize: 12, color: "#6b6c7e" }}>הערות (אופציונלי)</label>
@@ -940,7 +975,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
       )}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28 }}>
         <button className="btn-ghost" onClick={onBack} disabled={loading}>→ חזרה</button>
-        <button className="btn-gold" onClick={handleSubmit} disabled={!name || !phone || loading}>
+        <button className="btn-gold" onClick={handleSubmit} disabled={!firstName || !lastName || !email || !phone || !city || !street || !houseNumber || loading}>
           {loading ? "⏳ שולח הזמנה..." : "🎬 שלח הזמנה"}
         </button>
       </div>
@@ -957,6 +992,7 @@ function AdminPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadOrders = async () => {
     setLoading(true);
@@ -1006,13 +1042,53 @@ function AdminPage() {
 
   const statusColor = { "חדשה": "#c9a84c", "בטיפול": "#4a9eff", "הושלמה": "#5cc97a" };
 
+  const normalize = v => (v == null ? "" : String(v)).toLowerCase();
+
+  const filteredOrders = orders.filter(order => {
+    const q = normalize(searchQuery).trim();
+    if (!q) return true;
+    const dateStr = order.createdAt?.toDate?.()?.toLocaleDateString("he-IL") || "";
+    const haystack = [
+      order.firstName, order.lastName, order.name, order.email, order.phone,
+      order.city, order.street, order.houseNumber, order.notes,
+      order.package, order.packagePrice, order.style, order.music, order.musicArtist,
+      order.status, order.orderId, dateStr,
+    ].map(normalize).join(" | ");
+    return haystack.includes(q);
+  });
+
   return (
     <div dir="rtl" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif" }}>
       <div style={{ borderBottom: "1px solid #1e1f2e", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: "#c9a84c" }}>🎬 פאנל ניהול הזמנות</h1>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "#6b6c7e" }}>{orders.length} הזמנות</span>
+          <span style={{ fontSize: 12, color: "#6b6c7e" }}>{searchQuery ? `${filteredOrders.length} מתוך ${orders.length}` : `${orders.length} הזמנות`}</span>
           <button onClick={loadOrders} style={{ background: "#15161f", border: "1px solid #3a3b4a", color: "#e8e2d9", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12 }}>🔄 רענן</button>
+        </div>
+      </div>
+
+      {/* Search bar */}
+      <div style={{ padding: "14px 24px", borderBottom: "1px solid #1e1f2e" }}>
+        <div style={{ position: "relative", maxWidth: 420 }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="חיפוש לפי שם, משפחה, טלפון, אימייל, עיר, רחוב, תאריך, מספר הזמנה..."
+            style={{ width: "100%", background: "#15161f", border: "1px solid #3a3b4a", borderRadius: 40, padding: "10px 40px 10px 16px", color: "#e8e2d9", fontSize: 13, fontFamily: "'Inter',sans-serif", outline: "none", direction: "rtl", transition: "border-color 0.2s" }}
+            onFocus={e => e.target.style.borderColor = "#c9a84c"}
+            onBlur={e => e.target.style.borderColor = "#3a3b4a"}
+          />
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#6b6c7e", fontSize: 14, pointerEvents: "none" }}>🔍</span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#6b6c7e", cursor: "pointer", fontSize: 14, padding: 4 }}
+              title="נקה חיפוש"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
@@ -1022,14 +1098,15 @@ function AdminPage() {
         <div style={{ width: selectedOrder ? 380 : "100%", borderLeft: "1px solid #1e1f2e", overflowY: "auto", padding: 16 }}>
           {loading && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>טוען הזמנות...</div>}
           {!loading && orders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>אין הזמנות עדיין</div>}
-          {orders.map(order => (
+          {!loading && orders.length > 0 && filteredOrders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>לא נמצאו תוצאות עבור "{searchQuery}"</div>}
+          {filteredOrders.map(order => (
             <div
               key={order.id}
               onClick={() => setSelectedOrder(order)}
               style={{ background: selectedOrder?.id === order.id ? "rgba(201,168,76,0.08)" : "#15161f", border: `1px solid ${selectedOrder?.id === order.id ? "#c9a84c" : "#2a2b38"}`, borderRadius: 12, padding: "14px 16px", marginBottom: 10, cursor: "pointer", transition: "all 0.2s" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontWeight: 700, color: "#e8e2d9" }}>{order.name}</span>
+                <span style={{ fontWeight: 700, color: "#e8e2d9" }}>{order.firstName ? `${order.firstName} ${order.lastName || ""}` : order.name}</span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: statusColor[order.status] || "#6b6c7e", background: "rgba(0,0,0,0.3)", padding: "2px 10px", borderRadius: 20 }}>{order.status}</span>
               </div>
               <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>{order.phone} · {order.package} · {order.packagePrice}</div>
@@ -1062,8 +1139,13 @@ function AdminPage() {
             {/* Details */}
             <div style={{ background: "#15161f", borderRadius: 12, padding: "4px 16px", marginBottom: 20 }}>
               {[
-                ["שם", selectedOrder.name],
+                ["שם פרטי", selectedOrder.firstName || selectedOrder.name || "—"],
+                ["שם משפחה", selectedOrder.lastName || "—"],
+                ["אימייל", selectedOrder.email || "—"],
                 ["טלפון", selectedOrder.phone],
+                ["עיר", selectedOrder.city || "—"],
+                ["רחוב", selectedOrder.street || "—"],
+                ["מספר בית", selectedOrder.houseNumber || "—"],
                 ["חבילה", `${selectedOrder.package} · ${selectedOrder.packagePrice}`],
                 ["סגנון", selectedOrder.style],
                 ["מוזיקה", `${selectedOrder.music} — ${selectedOrder.musicArtist}`],
