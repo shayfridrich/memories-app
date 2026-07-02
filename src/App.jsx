@@ -1082,23 +1082,40 @@ function AdminPage() {
               <h3 style={{ fontSize: 14, color: "#c9a84c" }}>תמונות ({selectedOrder.photoCount})</h3>
               <button
                 onClick={async () => {
-                  for (let i = 0; i < (selectedOrder.photos || []).length; i++) {
-                    const photo = selectedOrder.photos[i];
-                    try {
-                      const res = await fetch(photo.url);
-                      const blob = await res.blob();
-                      const blobUrl = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = blobUrl;
-                      a.download = `photo-${photo.index}.jpg`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(blobUrl);
-                      await new Promise(r => setTimeout(r, 800));
-                    } catch(e) {
-                      window.open(photo.url, "_blank");
+                  try {
+                    // נסה להשתמש ב-File System Access API (Chrome/Edge)
+                    if (window.showDirectoryPicker) {
+                      const dirHandle = await window.showDirectoryPicker();
+                      for (const photo of (selectedOrder.photos || [])) {
+                        try {
+                          const res = await fetch(photo.url);
+                          const blob = await res.blob();
+                          const fileHandle = await dirHandle.getFileHandle(`תמונה-${photo.index}.jpg`, { create: true });
+                          const writable = await fileHandle.createWritable();
+                          await writable.write(blob);
+                          await writable.close();
+                        } catch(e) { console.error(e); }
+                      }
+                      alert(`✅ כל התמונות הורדו בהצלחה לתיקייה שבחרת!`);
+                    } else {
+                      // fallback לדפדפנים ישנים
+                      for (let i = 0; i < (selectedOrder.photos || []).length; i++) {
+                        const photo = selectedOrder.photos[i];
+                        const res = await fetch(photo.url);
+                        const blob = await res.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = blobUrl;
+                        a.download = `תמונה-${photo.index}.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(blobUrl);
+                        await new Promise(r => setTimeout(r, 800));
+                      }
                     }
+                  } catch(e) {
+                    if (e.name !== 'AbortError') alert("שגיאה בהורדה: " + e.message);
                   }
                 }}
                 style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
@@ -1137,10 +1154,37 @@ function AdminPage() {
                 <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>שיר אישי</h3>
                 <div style={{ background: "#15161f", borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#e8e2d9", fontSize: 13 }}>{selectedOrder.music}</span>
-                  <a href={selectedOrder.customTrackURL} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 12, color: "#4a9eff", textDecoration: "none", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(selectedOrder.customTrackURL);
+                        const blob = await res.blob();
+                        if (window.showSaveFilePicker) {
+                          const fileHandle = await window.showSaveFilePicker({
+                            suggestedName: `${selectedOrder.music}.mp3`,
+                            types: [{ description: "MP3 Audio", accept: { "audio/mpeg": [".mp3"] } }]
+                          });
+                          const writable = await fileHandle.createWritable();
+                          await writable.write(blob);
+                          await writable.close();
+                        } else {
+                          const blobUrl = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = blobUrl;
+                          a.download = `${selectedOrder.music}.mp3`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(blobUrl);
+                        }
+                      } catch(e) {
+                        if (e.name !== 'AbortError') alert("שגיאה בהורדה: " + e.message);
+                      }
+                    }}
+                    style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)", border: "none" }}
+                  >
                     ⬇️ הורד שיר
-                  </a>
+                  </button>
                 </div>
               </div>
             )}
