@@ -1181,7 +1181,7 @@ function AdminPage() {
                         if (e.name !== 'AbortError') alert("שגיאה בהורדה: " + e.message);
                       }
                     }}
-                    style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)", border: "none" }}
+                    style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
                   >
                     ⬇️ הורד שיר
                   </button>
