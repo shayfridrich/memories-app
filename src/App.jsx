@@ -57,6 +57,21 @@ const STYLES = `
   /* Package cards */
   .package-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
   @media (max-width: 700px) { .package-grid { grid-template-columns: 1fr; } }
+
+  /* Value proposition — benefits grid + hero image */
+  .benefits-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .benefits-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .benefits-grid { grid-template-columns: 1fr; } }
+  .benefit-card {
+    background: #0f1018; border: 1px solid #2a2b38; border-radius: 14px;
+    padding: 18px 14px; text-align: center; transition: border-color 0.3s ease;
+  }
+  .benefit-card:hover { border-color: #c9a84c; }
+  .benefit-icon { font-size: 26px; margin-bottom: 8px; }
+  .benefit-title { color: #e8e2d9; font-size: 14px; font-weight: 700; margin-bottom: 4px; line-height: 1.4; }
+  .benefit-sub { color: #6b6c7e; font-size: 12px; line-height: 1.5; }
+  .hero-image-wrap { border-radius: 16px; overflow: hidden; border: 1px solid #2a2b38; margin-bottom: 40px; }
+  .hero-image-wrap img { width: 100%; height: auto; display: block; }
   .package-card {
     border: 2px solid #2a2b38; border-radius: 16px; padding: 24px 20px 20px;
     cursor: pointer; transition: all 0.3s ease; background: #0f1018;
@@ -391,6 +406,35 @@ function StepPackage({ onSelect }) {
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
           />
         </div>
+      </div>
+
+      {/* Value proposition — what you actually get */}
+      <div className="benefits-grid">
+        <div className="benefit-card">
+          <div className="benefit-icon">🎬</div>
+          <div className="benefit-title">סרטון זיכרון מותאם אישית</div>
+          <div className="benefit-sub">מהתמונות שלכם, עם מוזיקה וסיפור</div>
+        </div>
+        <div className="benefit-card">
+          <div className="benefit-icon">🖼️</div>
+          <div className="benefit-title">מסגרת דיגיטלית חכמה עם מסך מגע</div>
+          <div className="benefit-sub">הסרטון כבר מותקן עליה (פרימיום ו-VIP)</div>
+        </div>
+        <div className="benefit-card">
+          <div className="benefit-icon">📱</div>
+          <div className="benefit-title">מתעדכנת ישירות מהנייד</div>
+          <div className="benefit-sub">שולחים תמונות חדשות בכל רגע</div>
+        </div>
+        <div className="benefit-card">
+          <div className="benefit-icon">🎁</div>
+          <div className="benefit-title">אריזה יוקרתית מעוצבת</div>
+          <div className="benefit-sub">מתנה מושלמת לכל אירוע</div>
+        </div>
+      </div>
+
+      {/* Hero image — frame in use + gift box */}
+      <div className="hero-image-wrap">
+        <img src="/frame-gift-hero.jpg" alt="מסגרת דיגיטלית רגעים של החיים בבית ובאריזה יוקרתית" />
       </div>
 
       {/* Demo video 2 - gift unboxing */}
