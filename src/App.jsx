@@ -386,7 +386,7 @@ function StepPackage({ onSelect }) {
           הזיכרונות שלכם <span style={{ color: "#c9a84c" }}>חוזרים לחיים</span>
         </h1>
         <p style={{ color: "#8a8b9e", fontSize: 16, lineHeight: 1.8, maxWidth: 540, margin: "0 auto" }}>
-          סרטון אישי מרגש בתוך מסגרת דיגיטלית יוקרתית לבית
+          מהתמונות שלכם ניצור סרטון אישי מרגש, שמגיע מוכן לצפייה בתוך מסגרת דיגיטלית יוקרתית לבית
         </p>
       </div>
 
