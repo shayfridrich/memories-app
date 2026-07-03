@@ -381,31 +381,13 @@ function FrameMockup({ pkg }) {
 function StepPackage({ onSelect }) {
   return (
     <div>
-      <div style={{ textAlign: "center", marginBottom: 40 }}>
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
         <h1 className="serif" style={{ fontSize: 42, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em", color: "#e8e2d9" }}>
           התמונות שלכם <span style={{ color: "#c9a84c" }}>מתחילות לחיות</span>
         </h1>
         <p style={{ color: "#8a8b9e", fontSize: 16, lineHeight: 1.8, maxWidth: 540, margin: "0 auto" }}>
           הופכים כל תמונה לזיכרון חי עם תנועה טבעית, מוזיקה וסיפור מרגש — כדי שתוכלו לחוות את הרגעים היקרים שלכם מחדש
         </p>
-      </div>
-
-      {/* Demo video 1 - memory video example */}
-      <div style={{ marginBottom: 20, borderRadius: 16, overflow: "hidden", background: "#0d0e14", border: "1px solid #2a2b38" }}>
-        <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c9a84c" }} />
-          <span style={{ fontSize: 13, color: "#6b6c7e" }}>סרטון דוגמא — ככה נראה סרטון זיכרון שיצרנו</span>
-        </div>
-        <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
-          <iframe
-            src="https://www.youtube.com/embed/Qdrh4a72yNQ?rel=0&modestbranding=1"
-            title="סרטון דוגמא - רגעים של החיים"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-          />
-        </div>
       </div>
 
       {/* Hero image — frame in use + gift box, with integrated benefits caption */}
@@ -432,6 +414,24 @@ function StepPackage({ onSelect }) {
             <div className="benefit-title">אריזה יוקרתית מעוצבת</div>
             <div className="benefit-sub">מתנה מושלמת לכל אירוע</div>
           </div>
+        </div>
+      </div>
+
+      {/* Demo video 1 - memory video example */}
+      <div style={{ marginBottom: 20, borderRadius: 16, overflow: "hidden", background: "#0d0e14", border: "1px solid #2a2b38" }}>
+        <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c9a84c" }} />
+          <span style={{ fontSize: 13, color: "#6b6c7e" }}>סרטון דוגמא — ככה נראה סרטון זיכרון שיצרנו</span>
+        </div>
+        <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
+          <iframe
+            src="https://www.youtube.com/embed/Qdrh4a72yNQ?rel=0&modestbranding=1"
+            title="סרטון דוגמא - רגעים של החיים"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+          />
         </div>
       </div>
 
@@ -1423,7 +1423,7 @@ function MainApp() {
         </div>
 
         {/* Main */}
-        <div style={{ maxWidth: 860, margin: "0 auto", padding: "36px 16px 80px" }}>
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "14px 16px 80px" }}>
           {!pkg ? (
             <StepPackage onSelect={handleSelectPackage} />
           ) : (
