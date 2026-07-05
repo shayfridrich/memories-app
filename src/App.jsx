@@ -12,6 +12,12 @@ const EMAILJS_TEMPLATE_CUSTOMER = "template_uzjjemc";
 const EMAILJS_TEMPLATE_ADMIN = "template_5cg5t9l";
 const ADMIN_EMAIL = "momentsoflife.770@gmail.com";
 
+// ── תשלומים (Invoice4U) ─────────────────────────────────────────
+// מתג בטיחות: כל עוד זה false, ההזמנה מסתיימת בדף התודה הרגיל בלי הפניה לתשלום.
+// יש להפעיל (להפוך ל-true) רק אחרי שהאינטגרציה נבדקה במלואה מול סביבת ה-production
+// של Invoice4U (לא QA!) - הפעלה מוקדמת מדי תפנה לקוחות אמיתיים לדף תשלום סנדבוקס שלא באמת מחייב.
+const PAYMENT_INTEGRATION_ENABLED = false;
+
 async function sendEmail(templateId, templateParams) {
   try {
     const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
@@ -623,9 +629,23 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
         לאחר ההעלאה ניתן לגרור ולסדר את התמונות לפי סדר כרונולוגי, ובין כל שתי תמונות ניתן לרשום 3 מילים על המעבר (לא חובה).
       </p>
 
-      <p style={{ color: "#e8e2d9", fontSize: 14, marginBottom: 20, lineHeight: 1.7, background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 8, padding: "10px 14px" }}>
-        ⚠️ <strong style={{ color: "#c9a84c" }}>חשוב:</strong> בחרו תמונות שבהן הפנים ברורות וגלויות ככל האפשר — זה משפיע ישירות על איכות הסרטון הסופי. עדיפות לתמונות לרוחב <strong style={{ color: "#c9a84c" }}>(לא חובה)</strong>.
+      <p style={{ color: "#e8e2d9", fontSize: 14, marginBottom: 10, lineHeight: 1.7, background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 8, padding: "10px 14px" }}>
+        ⚠️ <strong style={{ color: "#c9a84c" }}>חשוב:</strong> בחרו תמונות שבהן הפנים ברורות וגלויות ככל האפשר — זה משפיע ישירות על איכות הסרטון הסופי. עדיף תמונות לרוחב ולא לאורך:
       </p>
+      <div style={{ display: "flex", gap: 16, marginBottom: 20, alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 48, height: 64, border: "2px solid #e05c5c", borderRadius: 6, position: "relative", background: "#0d0e14" }}>
+            <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 18, color: "#e05c5c" }}>✕</span>
+          </div>
+          <span style={{ fontSize: 11, color: "#8a8b9e" }}>לאורך</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 64, height: 44, border: "2px solid #5cc97a", borderRadius: 6, position: "relative", background: "#0d0e14" }}>
+            <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 18, color: "#5cc97a" }}>✓</span>
+          </div>
+          <span style={{ fontSize: 11, color: "#8a8b9e" }}>לרוחב</span>
+        </div>
+      </div>
 
       {photos.length < maxPhotos && (
         <div
@@ -968,6 +988,34 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
           notes: notes || "—",
         }),
       ]);
+
+      // 5. הפניה לתשלום (רק אם האינטגרציה מופעלת - ראו מתג הבטיחות בראש הקובץ)
+      if (PAYMENT_INTEGRATION_ENABLED) {
+        try {
+          const paymentRes = await fetch("/api/create-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId,
+              firstName,
+              lastName,
+              phone,
+              email,
+              packageName: pkg.name,
+              packagePrice: pkg.price,
+            }),
+          });
+          const paymentData = await paymentRes.json();
+          if (paymentRes.ok && paymentData.redirectUrl) {
+            window.location.href = paymentData.redirectUrl;
+            return; // עוצרים כאן - הלקוח כבר בדרך לדף התשלום
+          }
+          console.error("יצירת תשלום נכשלה, ממשיכים לדף תודה רגיל:", paymentData);
+        } catch (paymentErr) {
+          // אם משהו נכשל בתשלום, לא "תוקעים" את הלקוח - ממשיכים לדף התודה הרגיל
+          console.error("שגיאה בקריאה ל-create-payment:", paymentErr);
+        }
+      }
 
       setSubmitted(true);
     } catch (err) {
