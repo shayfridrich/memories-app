@@ -1,24 +1,33 @@
 // api/_firebaseAdmin.js
-// מודול משותף - מאתחל את Firebase Admin פעם אחת ומספק גישה ל-Firestore
-// לכל שאר קבצי ה-api (מונע אתחול כפול בכל פונקציה בנפרד)
+// מודול משותף - מאתחל את Firebase Admin פעם אחת ומספק גישה ל-Firestore.
 //
-// נכתב ב-CommonJS (require/module.exports) בכוונה, כי הפרויקט הוא Create React App
-// רגיל בלי "type": "module" ב-package.json - כך שהפונקציות של Vercel רצות כ-CommonJS.
+// שימוש ב-API המודולרי החדש של firebase-admin (submodules נפרדים: "firebase-admin/app",
+// "firebase-admin/firestore") במקום האובייקט הישן "require('firebase-admin')" כמכלול -
+// זה הפתרון הרשמי המומלץ בגרסאות חדשות, ומונע בעיית "admin is undefined" שנתקלנו בה
+// עם הגישה הישנה בסביבת Vercel.
+//
+// נכתב באופן "מוגן": אם משהו נכשל באתחול, לא קורס בטעינה - initError נשמר ונבדק
+// בכל פונקציה שמשתמשת ב-db.
 
-const admin = require("firebase-admin");
+const { initializeApp, cert, getApps } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || "{}");
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (e) {
-    console.error("שגיאה באתחול Firebase Admin:", e);
+let db = null;
+let initError = null;
+
+try {
+  if (!getApps().length) {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!raw) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY לא מוגדר ב-Environment Variables");
+    }
+    const serviceAccount = JSON.parse(raw);
+    initializeApp({ credential: cert(serviceAccount) });
   }
+  db = getFirestore();
+} catch (e) {
+  console.error("שגיאה באתחול Firebase Admin:", e.message);
+  initError = e.message;
 }
 
-module.exports = {
-  db: admin.firestore(),
-  FieldValue: admin.firestore.FieldValue,
-};
+module.exports = { db, initError, FieldValue };
