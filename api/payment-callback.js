@@ -1,27 +1,17 @@
 // api/payment-callback.js
-// Vercel Serverless Function — מקבלת Webhook מ-Invoice4U (CallBackUrl) לאחר ניסיון תשלום,
+// Vercel Serverless Function — מקבלת Webhook מ-Invoice4U (CallBackUrl) לאחר ניסיון תשלום, אם וכאשר הוא מגיע.
 // ומעדכנת את ההזמנה המתאימה ב-Firestore.
 //
-// ⚠️ שים לב: המבנה המדויק של הנתונים שה-Webhook שולח לא תועד בקובץ ה-Postman שקיבלנו,
-// ולכן הקוד כאן כתוב באופן "מגן" - הוא מתעד (console.log) את כל מה שמתקבל, ומנסה כמה
-// שמות שדה סבירים. יש לבצע בדיקה אמיתית (למשל דרך webhook.site) ולוודא/לתקן את שמות
-// השדות בהתאם למה שבאמת מתקבל, לפני הפעלה בסביבת הפרודקשן.
+// ⚠️ הערה חשובה מהבדיקות שביצענו: בסביבת הטסטים (QA) של Invoice4U, ה-Webhook הזה
+// לא הגיע בפועל תוך זמן סביר בבדיקה שערכנו. לכן אין להסתמך על הקובץ הזה בלבד -
+// יש גם מנגנון אימות אקטיבי מקביל בקובץ check-payment-status.js שהלקוח מפעיל
+// כשהוא חוזר מדף התשלום. ייתכן שב-production ה-Webhook יתפקד באופן אמין יותר -
+// כדאי לבדוק זאת מחדש כשעוברים לשם.
 //
 // משתני סביבה נדרשים ב-Vercel:
 //   FIREBASE_SERVICE_ACCOUNT_KEY - תוכן קובץ ה-JSON של Firebase Service Account (כמחרוזת אחת)
 
-import admin from "firebase-admin";
-
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || "{}");
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (e) {
-    console.error("שגיאה באתחול Firebase Admin:", e);
-  }
-}
+import { db, FieldValue } from "./_firebaseAdmin.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -35,14 +25,12 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
 
-    // ניסיון למצוא את מזהה ההזמנה תחת כמה שמות שדה אפשריים
     const orderId =
       body.OrderIdClientUsage ||
       body.orderIdClientUsage ||
       body.OrderId ||
       body?.d?.OrderIdClientUsage;
 
-    // ניסיון לזהות הצלחה/כישלון תחת כמה שמות שדה אפשריים
     const rawSuccess =
       body.IsSuccess ?? body.Success ?? body.isSuccess ?? body?.d?.IsSuccess;
     const isSuccess = rawSuccess === true || rawSuccess === "true";
@@ -52,7 +40,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing order id", received: body });
     }
 
-    const db = admin.firestore();
     const ordersRef = db.collection("orders");
     const snapshot = await ordersRef.where("orderId", "==", orderId).limit(1).get();
 
@@ -65,7 +52,7 @@ export default async function handler(req, res) {
     await doc.ref.update({
       paymentStatus: isSuccess ? "שולם" : "נכשל",
       paymentCallbackRaw: body,
-      paymentUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paymentUpdatedAt: FieldValue.serverTimestamp(),
     });
 
     console.log(`הזמנה ${orderId} עודכנה לסטטוס: ${isSuccess ? "שולם" : "נכשל"}`);

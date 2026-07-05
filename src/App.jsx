@@ -1496,7 +1496,98 @@ function MainApp() {
   );
 }
 
+function PaymentReturn({ lowProfileCode }) {
+  const [status, setStatus] = useState("checking"); // checking | success | failed | error
+  const [orderInfo, setOrderInfo] = useState(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/check-payment-status?lowProfileCode=${encodeURIComponent(lowProfileCode)}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.ok) {
+          setOrderInfo(data);
+          setStatus(data.success ? "success" : "failed");
+        } else {
+          setStatus("error");
+        }
+      } catch (e) {
+        if (!cancelled) setStatus("error");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [lowProfileCode]);
+
+  return (
+    <>
+      <style>{STYLES}</style>
+      <div dir="rtl" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ maxWidth: 440, width: "100%", textAlign: "center", background: "#15161f", border: "1px solid #2a2b38", borderRadius: 16, padding: "40px 28px" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+            <img src="/logo.png" alt="רגעים של החיים" style={{ height: 80, width: "auto", mixBlendMode: "screen", filter: "brightness(1.1)" }} />
+          </div>
+
+          {status === "checking" && (
+            <>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>מאמתים את התשלום שלך...</h2>
+              <p style={{ color: "#8a8b9e", fontSize: 14 }}>רגע אחד, אנחנו בודקים את סטטוס העסקה מול חברת הסליקה.</p>
+            </>
+          )}
+
+          {status === "success" && (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8, color: "#c9a84c" }}>התשלום התקבל בהצלחה!</h2>
+              <p style={{ color: "#8a8b9e", fontSize: 14, lineHeight: 1.7 }}>
+                {orderInfo?.firstName ? `תודה ${orderInfo.firstName}! ` : ""}
+                קיבלנו את התשלום עבור {orderInfo?.packageName || "ההזמנה שלך"}. אנחנו כבר מתחילים לעבוד על הסרטון וניצור איתך קשר בהקדם.
+              </p>
+            </>
+          )}
+
+          {status === "failed" && (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>התשלום לא הושלם</h2>
+              <p style={{ color: "#8a8b9e", fontSize: 14, lineHeight: 1.7 }}>
+                נראה שהתשלום לא עבר בהצלחה. אפשר לנסות שוב, או ליצור איתנו קשר בוואטסאפ ונעזור לך להשלים את ההזמנה.
+              </p>
+            </>
+          )}
+
+          {status === "error" && (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>לא הצלחנו לאמת את התשלום</h2>
+              <p style={{ color: "#8a8b9e", fontSize: 14, lineHeight: 1.7 }}>
+                אם בוצע חיוב בפועל, אין דאגה - ניצור איתך קשר לוודא את ההזמנה. אפשר גם לפנות אלינו בוואטסאפ.
+              </p>
+            </>
+          )}
+
+          <a
+            href="https://wa.me/972508490098"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "inline-block", marginTop: 20, color: "#c9a84c", fontSize: 13, textDecoration: "underline" }}
+          >
+            צור קשר בוואטסאפ
+          </a>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function App() {
   if (window.location.search.includes("admin=true")) return <AdminPage />;
+
+  const params = new URLSearchParams(window.location.search);
+  const lowProfileCode = params.get("lowprofilecode") || params.get("lowProfileCode") || params.get("LowProfileCode");
+  if (lowProfileCode) return <PaymentReturn lowProfileCode={lowProfileCode} />;
+
   return <MainApp />;
 }
