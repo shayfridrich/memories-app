@@ -16,7 +16,7 @@ const ADMIN_EMAIL = "momentsoflife.770@gmail.com";
 // מתג בטיחות: כל עוד זה false, ההזמנה מסתיימת בדף התודה הרגיל בלי הפניה לתשלום.
 // יש להפעיל (להפוך ל-true) רק אחרי שהאינטגרציה נבדקה במלואה מול סביבת ה-production
 // של Invoice4U (לא QA!) - הפעלה מוקדמת מדי תפנה לקוחות אמיתיים לדף תשלום סנדבוקס שלא באמת מחייב.
-const PAYMENT_INTEGRATION_ENABLED = false;
+const PAYMENT_INTEGRATION_ENABLED = true; // ⚠️ זמני לבדיקה - לכבות בחזרה ל-false מיד אחרי!
 
 async function sendEmail(templateId, templateParams) {
   try {
