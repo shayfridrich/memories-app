@@ -17,9 +17,9 @@
 // הפתרון: שומרים כאן ב-Firestore מיפוי lowProfileCode -> orderId, וכש-הלקוח חוזר
 // (api/check-payment-status.js) מאתרים לפי ה-lowprofilecode שכן חוזר תמיד.
 
-import { db, FieldValue } from "./_firebaseAdmin.js";
+const { db, FieldValue } = require("./_firebaseAdmin.js");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -121,4 +121,4 @@ export default async function handler(req, res) {
     console.error("create-payment error:", err);
     return res.status(500).json({ error: "שגיאת שרת ביצירת בקשת תשלום" });
   }
-}
+};

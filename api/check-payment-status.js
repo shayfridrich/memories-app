@@ -3,17 +3,16 @@
 //
 // למה זה קיים: גילינו ש-Cardcom/Invoice4U לא שולחים Webhook (CallBackUrl) באופן אמין
 // בסביבת הטסטים, וגם "דורסים" את פרמטרי ה-ReturnUrl שלנו. לכן, כשהלקוח חוזר מהתשלום,
-// האתר קורא לפונקציה הזו עם ה-lowProfileCode שכן חוזר תמיד בתוך פרמטרי הדף
-// (גם אם בשם/למיקום שונה מהמצופה - נבדוק את זה בהמשך), ומאתרים לפי זה את ההזמנה
-// שנשמרה מראש ב-Firestore (ב-create-payment.js), ואז שואלים את Invoice4U ישירות
-// האם התשלום הצליח.
+// האתר קורא לפונקציה הזו עם ה-lowProfileCode שכן חוזר תמיד בתוך פרמטרי הדף, ומאתרים
+// לפי זה את ההזמנה שנשמרה מראש ב-Firestore (ב-create-payment.js), ואז שואלים את
+// Invoice4U ישירות האם התשלום הצליח.
 //
 // משתני סביבה נדרשים:
 //   INVOICE4U_API_KEY, INVOICE4U_API_BASE, FIREBASE_SERVICE_ACCOUNT_KEY (כמו create-payment.js)
 
-import { db, FieldValue } from "./_firebaseAdmin.js";
+const { db, FieldValue } = require("./_firebaseAdmin.js");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -79,4 +78,4 @@ export default async function handler(req, res) {
     console.error("check-payment-status error:", err);
     return res.status(500).json({ error: "שגיאת שרת באימות תשלום" });
   }
-}
+};

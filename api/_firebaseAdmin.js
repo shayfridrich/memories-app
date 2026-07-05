@@ -1,8 +1,11 @@
 // api/_firebaseAdmin.js
 // מודול משותף - מאתחל את Firebase Admin פעם אחת ומספק גישה ל-Firestore
 // לכל שאר קבצי ה-api (מונע אתחול כפול בכל פונקציה בנפרד)
+//
+// נכתב ב-CommonJS (require/module.exports) בכוונה, כי הפרויקט הוא Create React App
+// רגיל בלי "type": "module" ב-package.json - כך שהפונקציות של Vercel רצות כ-CommonJS.
 
-import admin from "firebase-admin";
+const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
   try {
@@ -15,5 +18,7 @@ if (!admin.apps.length) {
   }
 }
 
-export const db = admin.firestore();
-export const FieldValue = admin.firestore.FieldValue;
+module.exports = {
+  db: admin.firestore(),
+  FieldValue: admin.firestore.FieldValue,
+};

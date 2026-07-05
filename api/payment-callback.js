@@ -11,9 +11,9 @@
 // משתני סביבה נדרשים ב-Vercel:
 //   FIREBASE_SERVICE_ACCOUNT_KEY - תוכן קובץ ה-JSON של Firebase Service Account (כמחרוזת אחת)
 
-import { db, FieldValue } from "./_firebaseAdmin.js";
+const { db, FieldValue } = require("./_firebaseAdmin.js");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
@@ -62,4 +62,4 @@ export default async function handler(req, res) {
     console.error("payment-callback error:", err);
     return res.status(500).json({ error: "Server error" });
   }
-}
+};
