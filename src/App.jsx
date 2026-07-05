@@ -629,23 +629,9 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
         לאחר ההעלאה ניתן לגרור ולסדר את התמונות לפי סדר כרונולוגי, ובין כל שתי תמונות ניתן לרשום 3 מילים על המעבר (לא חובה).
       </p>
 
-      <p style={{ color: "#e8e2d9", fontSize: 14, marginBottom: 10, lineHeight: 1.7, background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 8, padding: "10px 14px" }}>
-        ⚠️ <strong style={{ color: "#c9a84c" }}>חשוב:</strong> בחרו תמונות שבהן הפנים ברורות וגלויות ככל האפשר — זה משפיע ישירות על איכות הסרטון הסופי. עדיף תמונות לרוחב ולא לאורך:
+      <p style={{ color: "#e8e2d9", fontSize: 14, marginBottom: 20, lineHeight: 1.7, background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 8, padding: "10px 14px" }}>
+        ⚠️ <strong style={{ color: "#c9a84c" }}>חשוב:</strong> בחרו תמונות שבהן הפנים ברורות וגלויות ככל האפשר — זה משפיע ישירות על איכות הסרטון הסופי. עדיפות לתמונות לרוחב <strong style={{ color: "#c9a84c" }}>(לא חובה)</strong>.
       </p>
-      <div style={{ display: "flex", gap: 16, marginBottom: 20, alignItems: "center" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 48, height: 64, border: "2px solid #e05c5c", borderRadius: 6, position: "relative", background: "#0d0e14" }}>
-            <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 18, color: "#e05c5c" }}>✕</span>
-          </div>
-          <span style={{ fontSize: 11, color: "#8a8b9e" }}>לאורך</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 64, height: 44, border: "2px solid #5cc97a", borderRadius: 6, position: "relative", background: "#0d0e14" }}>
-            <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 18, color: "#5cc97a" }}>✓</span>
-          </div>
-          <span style={{ fontSize: 11, color: "#8a8b9e" }}>לרוחב</span>
-        </div>
-      </div>
 
       {photos.length < maxPhotos && (
         <div
