@@ -31,6 +31,12 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "חסרים פרטים נדרשים ליצירת תשלום" });
     }
 
+    // ה-packagePrice עלול להגיע כמחרוזת עם סימן ₪ (למשל "₪799") - Invoice4U דורש מספר טהור
+    const cleanPrice = String(packagePrice).replace(/[^\d.]/g, "");
+    if (!cleanPrice) {
+      return res.status(400).json({ error: "מחיר החבילה אינו תקין" });
+    }
+
     const baseUrl = process.env.SITE_URL || "https://momentsoflife.co.il";
     const apiBase = process.env.INVOICE4U_API_BASE || "https://apiqa.invoice4u.co.il/Services/ApiService.svc";
     const apiKey = process.env.INVOICE4U_API_KEY;
@@ -50,7 +56,7 @@ module.exports = async (req, res) => {
         FullName: fullName,
         Phone: phone,
         Email: email,
-        Sum: String(packagePrice),
+        Sum: cleanPrice,
         Description: `רגעים של החיים - ${packageName || "הזמנה"}`,
         PaymentsNum: "1",
         Currency: "ILS",
@@ -59,7 +65,7 @@ module.exports = async (req, res) => {
         DocHeadline: `חשבונית - ${packageName || "הזמנה"}`,
         DocComments: `הזמנה מספר ${orderId}`,
         DocItemQuantity: "1",
-        DocItemPrice: String(packagePrice),
+        DocItemPrice: cleanPrice,
         DocItemTaxRate: "18",
         DocItemName: packageName || "סרטון זיכרון",
         IsGeneralClient: "true",
