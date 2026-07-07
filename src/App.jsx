@@ -975,6 +975,19 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         }),
       ]);
 
+      // 4.5 אירוע המרה ל-Meta Pixel (לא חוסם את ההזמנה אם הפיקסל לא נטען)
+      try {
+        if (window.fbq) {
+          window.fbq("track", "Lead", {
+            content_name: pkg.name,
+            value: parseInt(String(pkg.price).replace(/[^\d]/g, ""), 10) || 0,
+            currency: "ILS",
+          });
+        }
+      } catch (fbqErr) {
+        console.error("שגיאת Pixel:", fbqErr);
+      }
+
       // 5. הפניה לתשלום (רק אם האינטגרציה מופעלת - ראו מתג הבטיחות בראש הקובץ)
       if (PAYMENT_INTEGRATION_ENABLED) {
         try {
