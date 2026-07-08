@@ -492,6 +492,10 @@ function StepPackage({ onSelect }) {
           <strong style={{ color: "#c9a84c" }}>המסגרת לא רק מנגנת את הסרטון שלכם</strong> — היא גם מציגה כל תמונה שתשלחו אליה מהטלפון, בלחיצה אחת. רהיט חי ויפה לבית.
         </p>
       </div>
+
+      <p style={{ marginTop: 14, textAlign: "center", fontSize: 13, color: "#6b6c7e" }}>
+        ⏱ זמן הגעת המשלוח: עד 14 ימי עסקים
+      </p>
     </div>
   );
 }
@@ -975,19 +979,6 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         }),
       ]);
 
-      // 4.5 אירוע המרה ל-Meta Pixel (לא חוסם את ההזמנה אם הפיקסל לא נטען)
-      try {
-        if (window.fbq) {
-          window.fbq("track", "Lead", {
-            content_name: pkg.name,
-            value: parseInt(String(pkg.price).replace(/[^\d]/g, ""), 10) || 0,
-            currency: "ILS",
-          });
-        }
-      } catch (fbqErr) {
-        console.error("שגיאת Pixel:", fbqErr);
-      }
-
       // 5. הפניה לתשלום (רק אם האינטגרציה מופעלת - ראו מתג הבטיחות בראש הקובץ)
       if (PAYMENT_INTEGRATION_ENABLED) {
         try {
@@ -1032,6 +1023,9 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         <h2 className="serif" style={{ fontSize: 28, marginBottom: 10, color: "#e8e2d9" }}>ההזמנה התקבלה!</h2>
         <p style={{ color: "#6b6c7e", fontSize: 14, lineHeight: 1.7, maxWidth: 380, margin: "0 auto 20px" }}>
           תודה {firstName}! קיבלנו את כל הפרטים כדי לייצר עבורך את הסרטון. אנחנו כבר מתחילים לעבוד עליו וניצור איתך קשר בהקדם.
+        </p>
+        <p style={{ color: "#6b6c7e", fontSize: 13, textAlign: "center", marginTop: -12, marginBottom: 20 }}>
+          ⏱ זמן הגעת המשלוח: עד 14 ימי עסקים
         </p>
         <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, padding: "14px 22px", display: "inline-block" }}>
           <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>מספר הזמנה</div>
@@ -1145,6 +1139,49 @@ function AdminPage() {
     if (selectedOrder?.id === docId) setSelectedOrder(prev => ({ ...prev, status }));
   };
 
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteOrder = async (order) => {
+    const confirmed = window.confirm(
+      `למחוק לצמיתות את הזמנה #${order.orderId}?\n\nפעולה זו תמחק גם את כל התמונות והקבצים מהשרת, ולא ניתן לשחזר אותה.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const { deleteDoc, doc: fsDoc } = await import("firebase/firestore");
+      const { ref: storageRef, deleteObject } = await import("firebase/storage");
+
+      // מחיקת כל התמונות מ-Storage
+      for (const photo of (order.photos || [])) {
+        try {
+          await deleteObject(storageRef(storage, photo.url));
+        } catch (e) {
+          console.error("שגיאה במחיקת תמונה:", photo?.name, e);
+        }
+      }
+
+      // מחיקת שיר אישי אם קיים
+      if (order.customTrackURL) {
+        try {
+          await deleteObject(storageRef(storage, order.customTrackURL));
+        } catch (e) {
+          console.error("שגיאה במחיקת שיר אישי:", e);
+        }
+      }
+
+      // מחיקת מסמך ההזמנה מ-Firestore
+      await deleteDoc(fsDoc(db, "orders", order.id));
+
+      setOrders(prev => prev.filter(o => o.id !== order.id));
+      setSelectedOrder(prev => (prev?.id === order.id ? null : prev));
+    } catch (e) {
+      console.error("שגיאה במחיקת הזמנה:", e);
+      alert("אירעה שגיאה במחיקת ההזמנה. נסה שוב.");
+    }
+    setDeleting(false);
+  };
+
   if (!authed) {
     return (
       <div style={{ minHeight: "100vh", background: "#0d0e14", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1254,7 +1291,16 @@ function AdminPage() {
           <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20 }}>פרטי הזמנה #{selectedOrder.orderId}</h2>
-              <button onClick={() => setSelectedOrder(null)} style={{ background: "transparent", border: "1px solid #3a3b4a", color: "#6b6c7e", borderRadius: 8, padding: "4px 12px", cursor: "pointer" }}>✕ סגור</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => deleteOrder(selectedOrder)}
+                  disabled={deleting}
+                  style={{ background: "transparent", border: "1px solid #e05c5c", color: "#e05c5c", borderRadius: 8, padding: "4px 12px", cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.6 : 1, fontSize: 13 }}
+                >
+                  {deleting ? "מוחק..." : "🗑 מחק הזמנה"}
+                </button>
+                <button onClick={() => setSelectedOrder(null)} style={{ background: "transparent", border: "1px solid #3a3b4a", color: "#6b6c7e", borderRadius: 8, padding: "4px 12px", cursor: "pointer" }}>✕ סגור</button>
+              </div>
             </div>
 
             {/* Status buttons */}
@@ -1544,6 +1590,7 @@ function PaymentReturn({ lowProfileCode }) {
                 {orderInfo?.firstName ? `תודה ${orderInfo.firstName}! ` : ""}
                 קיבלנו את התשלום עבור {orderInfo?.packageName || "ההזמנה שלך"}. אנחנו כבר מתחילים לעבוד על הסרטון וניצור איתך קשר בהקדם.
               </p>
+              <p style={{ color: "#6b6c7e", fontSize: 12 }}>⏱ זמן הגעת המשלוח: עד 14 ימי עסקים</p>
             </>
           )}
 
