@@ -1555,6 +1555,23 @@ function PaymentReturn({ lowProfileCode }) {
         if (res.ok) {
           setOrderInfo(data);
           setStatus(data.success ? "success" : "failed");
+
+          // אירוע המרה אמיתי ל-Meta Pixel — יורה רק כאן, אחרי אימות תשלום בפועל מול Invoice4U
+          // (לא בשליחת הטופס, כדי שרק מי ששילם באמת ייספר כרכישה)
+          if (data.success) {
+            try {
+              if (window.fbq) {
+                window.fbq("track", "Purchase", {
+                  value: Number(data.packagePrice) || 0,
+                  currency: "ILS",
+                  content_name: data.packageName || "חבילת רגעים של החיים",
+                  content_type: "product",
+                });
+              }
+            } catch (pixelErr) {
+              console.error("Meta Pixel Purchase event error:", pixelErr);
+            }
+          }
         } else {
           setStatus("error");
         }
