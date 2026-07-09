@@ -1561,8 +1561,9 @@ function PaymentReturn({ lowProfileCode }) {
           if (data.success) {
             try {
               if (window.fbq) {
+                const cleanValue = Number(String(data.packagePrice || "").replace(/[^\d.]/g, "")) || 0;
                 window.fbq("track", "Purchase", {
-                  value: Number(data.packagePrice) || 0,
+                  value: cleanValue,
                   currency: "ILS",
                   content_name: data.packageName || "חבילת רגעים של החיים",
                   content_type: "product",
