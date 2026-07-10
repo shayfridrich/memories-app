@@ -1219,6 +1219,15 @@ function AdminPage() {
   }
 
   const statusColor = { "חדשה": "#c9a84c", "בטיפול": "#4a9eff", "הושלמה": "#5cc97a" };
+  // צבע לתג סטטוס התשלום - מוצג בנפרד מסטטוס הטיפול, כדי שאפשר יהיה להבחין מיד
+  // בין הזמנה ששולמה בפועל לבין הזמנה שנפתחה אך לא שולמה
+  const paymentStatusColor = {
+    "שולם": "#5cc97a",
+    "ממתין לתשלום": "#e0a13c",
+    "נכשל": "#e05c5c",
+    "לא רלוונטי (תשלום מול הספק)": "#6b6c7e",
+  };
+  const paymentStatusLabel = order => order.paymentStatus || "לא ידוע";
 
   const normalize = v => (v == null ? "" : String(v)).toLowerCase();
 
@@ -1230,7 +1239,7 @@ function AdminPage() {
       order.firstName, order.lastName, order.name, order.email, order.phone,
       order.city, order.street, order.houseNumber, order.notes,
       order.package, order.packagePrice, order.style, order.music, order.musicArtist,
-      order.status, order.orderId, dateStr,
+      order.status, order.paymentStatus, order.orderId, dateStr,
     ].map(normalize).join(" | ");
     return haystack.includes(q);
   });
@@ -1287,6 +1296,12 @@ function AdminPage() {
                 <span style={{ fontWeight: 700, color: "#e8e2d9" }}>{order.firstName ? `${order.firstName} ${order.lastName || ""}` : order.name}</span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: statusColor[order.status] || "#6b6c7e", background: "rgba(0,0,0,0.3)", padding: "2px 10px", borderRadius: 20 }}>{order.status}</span>
               </div>
+              {/* תג סטטוס תשלום - נפרד ובולט, כדי לא להתבלבל בין "הזמנה חדשה" לבין "שולם בפועל" */}
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: paymentStatusColor[order.paymentStatus] || "#6b6c7e", border: `1px solid ${paymentStatusColor[order.paymentStatus] || "#6b6c7e"}`, padding: "1px 8px", borderRadius: 20 }}>
+                  💳 {paymentStatusLabel(order)}
+                </span>
+              </div>
               <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>{order.phone} · {order.package} · {order.packagePrice}</div>
               <div style={{ fontSize: 11, color: "#4a4b5e", display: "flex", justifyContent: "space-between" }}>
                 <span>#{order.orderId}</span>
@@ -1326,6 +1341,7 @@ function AdminPage() {
             {/* Details */}
             <div style={{ background: "#15161f", borderRadius: 12, padding: "4px 16px", marginBottom: 20 }}>
               {[
+                ["סטטוס תשלום", paymentStatusLabel(selectedOrder)],
                 ["שם פרטי", selectedOrder.firstName || selectedOrder.name || "—"],
                 ["שם משפחה", selectedOrder.lastName || "—"],
                 ["אימייל", selectedOrder.email || "—"],
