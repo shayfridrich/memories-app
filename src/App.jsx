@@ -3,24 +3,20 @@ import { db, storage } from "./firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-// ── EMAILJS — email notifications ──────────────────────────────
-// Fill these in after signing up (free) at emailjs.com.
-// NOTE for US launch: create a NEW EmailJS account/templates for the US brand
-// (or reuse this one, but update the "from" name/copy to English).
+// ── EMAILJS — התראות מייל ──────────────────────────────────────
+// יש למלא את הפרטים האלה לאחר הרשמה חינמית ב-emailjs.com
+// מדריך מלא בהודעה בצ'אט
 const EMAILJS_PUBLIC_KEY = "NE3YZm-vpQZyEQ9hL";
 const EMAILJS_SERVICE_ID = "service_qbik3ut";
 const EMAILJS_TEMPLATE_CUSTOMER = "template_uzjjemc";
 const EMAILJS_TEMPLATE_ADMIN = "template_5cg5t9l";
 const ADMIN_EMAIL = "momentsoflife.770@gmail.com";
 
-// ── PAYMENTS ─────────────────────────────────────────────────────
-// Safety switch: while this is false, checkout ends on the normal thank-you
-// page with no redirect to a payment processor.
-// NOTE for US launch: Invoice4U/Cardcom (Israeli processor) does not work
-// for US customers — swap the api/create-payment.js, api/payment-callback.js
-// and api/check-payment-status.js serverless functions for a US processor
-// (e.g. Stripe) before enabling this in production.
-const PAYMENT_INTEGRATION_ENABLED = false; // OFF for the US site for now — orders end on the normal thank-you page, no charge is made.
+// ── תשלומים (Invoice4U) ─────────────────────────────────────────
+// מתג בטיחות: כל עוד זה false, ההזמנה מסתיימת בדף התודה הרגיל בלי הפניה לתשלום.
+// יש להפעיל (להפוך ל-true) רק אחרי שהאינטגרציה נבדקה במלואה מול סביבת ה-production
+// של Invoice4U (לא QA!) - הפעלה מוקדמת מדי תפנה לקוחות אמיתיים לדף תשלום סנדבוקס שלא באמת מחייב.
+const PAYMENT_INTEGRATION_ENABLED = true; // ⚠️ זמני - בדיקת production אמיתית מהאתר, לכבות מיד אחרי!
 
 async function sendEmail(templateId, templateParams) {
   try {
@@ -35,10 +31,10 @@ async function sendEmail(templateId, templateParams) {
       }),
     });
     if (!res.ok) {
-      console.error("Failed to send email:", await res.text());
+      console.error("שליחת מייל נכשלה:", await res.text());
     }
   } catch (e) {
-    console.error("Error sending email:", e);
+    console.error("שגיאה בשליחת מייל:", e);
   }
 }
 
@@ -78,7 +74,7 @@ const STYLES = `
     padding: 18px 14px; text-align: center;
     border-left: 1px solid #2a2b38;
   }
-  .benefit-card:first-child { border-left: none; }
+  .benefit-card:last-child { border-left: none; }
   .benefit-icon { font-size: 24px; margin-bottom: 8px; }
   .benefit-title { color: #e8e2d9; font-size: 13px; font-weight: 700; margin-bottom: 4px; line-height: 1.4; }
   .benefit-sub { color: #6b6c7e; font-size: 11px; line-height: 1.5; }
@@ -111,7 +107,7 @@ const STYLES = `
   .package-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: #e8e2d9; }
   .package-price { font-size: 28px; font-weight: 800; color: #c9a84c; margin-bottom: 4px; }
   .package-price span { font-size: 14px; font-weight: 400; color: #6b6c7e; }
-  .package-features { list-style: none; margin-top: 14px; width: 100%; text-align: left; }
+  .package-features { list-style: none; margin-top: 14px; width: 100%; text-align: right; }
   .package-features li { font-size: 12px; color: #8a8b9e; padding: 4px 0; border-bottom: 1px solid #1e1f2e; display: flex; justify-content: space-between; align-items: center; }
   .package-features li:last-child { border-bottom: none; }
   .package-features li .val { color: #c9a84c; font-weight: 600; }
@@ -201,166 +197,163 @@ const STYLES = `
 `;
 
 // ── DATA ──────────────────────────────────────────────────────
-// NOTE: USD prices below are a starting point (roughly converted + rounded
-// for US price psychology). Adjust once you've validated margins with a US
-// payment processor and US shipping costs.
 const PACKAGES = [
   {
     id: "basic",
-    name: "Basic",
-    price: "$149",
+    name: "בסיסי",
+    price: "₪499",
     photos: 30,
     clips: 15,
-    duration: "3 minutes",
+    duration: "3 דקות",
     hasFrame: false,
     frameSize: null,
     highlight: false,
     badge: null,
     features: [
-      { label: "Photos", val: "30" },
-      { label: "Video length", val: "3 minutes" },
-      { label: "Digital frame", val: "Not included" },
-      { label: "Price", val: "$149" },
+      { label: "תמונות", val: "30" },
+      { label: "אורך סרטון", val: "3 דקות" },
+      { label: "מסגרת דיגיטלית", val: "ללא" },
+      { label: "עלות", val: "₪499" },
     ]
   },
   {
     id: "premium",
-    name: "Premium",
-    price: "$249",
+    name: "פרימיום",
+    price: "₪799",
     photos: 30,
     clips: 15,
-    duration: "3 minutes",
+    duration: "3 דקות",
     hasFrame: true,
     frameSize: '10"',
     highlight: true,
-    badge: "Most Popular ⭐",
+    badge: "הכי פופולרי ⭐",
     features: [
-      { label: "Photos", val: "30" },
-      { label: "Video length", val: "3 minutes" },
-      { label: "Digital frame", val: '10"' },
-      { label: "Premium gift packaging", val: "✓" },
-      { label: "Price", val: "$249" },
+      { label: "תמונות", val: "30" },
+      { label: "אורך סרטון", val: "3 דקות" },
+      { label: "מסגרת דיגיטלית", val: '10"' },
+      { label: "אריזת מתנה מעוצבת", val: "✓" },
+      { label: "עלות", val: "₪799" },
     ]
   },
   {
     id: "vip",
     name: "VIP 👑",
-    price: "$449",
+    price: "₪1,500",
     photos: 40,
     clips: 20,
-    duration: "4 minutes",
+    duration: "4 דקות",
     hasFrame: true,
     frameSize: '15"',
     highlight: false,
     badge: null,
     features: [
-      { label: "Photos", val: "40" },
-      { label: "Video length", val: "4 minutes" },
-      { label: "Digital frame", val: '15"' },
-      { label: "Premium gift packaging", val: "✓" },
-      { label: "Price", val: "$449" },
+      { label: "תמונות", val: "40" },
+      { label: "אורך סרטון", val: "4 דקות" },
+      { label: "מסגרת דיגיטלית", val: '15"' },
+      { label: "אריזת מתנה מעוצבת", val: "✓" },
+      { label: "עלות", val: "₪1,500" },
     ]
   }
 ];
 
 const STYLES_DATA = [
-  { id:"romantic",  emoji:"🌹", name:"Romantic",   desc:"Warm golden light, soft transitions, a feeling of love", occasions:["Bat/Bar Mitzvah","Wedding","New Baby","Anniversary"], preview:"linear-gradient(90deg,#d4a5b5,#f7d6e0)" },
-  { id:"happy",     emoji:"✨", name:"Joyful & Vibrant",  desc:"Bold colors, festive energy, big celebrations",  occasions:["Birthday","Graduation","Family Trip","School Milestone"], preview:"linear-gradient(90deg,#e8c94c,#f7a500)" },
-  { id:"modern",    emoji:"🎬", name:"Cinematic",  desc:"Movie-style, sharp contrast, luxurious and impressive", occasions:["Bar/Bat Mitzvah","Graduation","Business Launch","Big Achievement"], preview:"linear-gradient(90deg,#7a9fff,#4a6fff)" },
-  { id:"nostalgic", emoji:"📷", name:"Nostalgic",  desc:"Vintage tones, old-album feel, warm sense of memory",     occasions:["50+ Birthday","Retirement","Wedding Anniversary"],       preview:"linear-gradient(90deg,#c4a882,#a07850)" },
-  { id:"dramatic",  emoji:"🌙", name:"Dramatic",    desc:"Powerful transitions, light from the darkness, breathtaking", occasions:["Graduation","Bar/Bat Mitzvah","Big Win"],            preview:"linear-gradient(90deg,#9b7fff,#6a3fff)" },
-  { id:"playful",   emoji:"🎈", name:"Playful",   desc:"Wonder and mischief, warm colors, a living storybook",  occasions:["Birthday (ages 1–5)","First Day of School","Holiday Party"],    preview:"linear-gradient(90deg,#7fd4a0,#4aaa6a)" },
+  { id:"romantic",  emoji:"🌹", name:"רומנטי",   desc:"אור זהוב חם, מעברים עדינים, תחושת אהבה", occasions:["בת מצווה","חתונה","גיוס","לידה","יובל"], preview:"linear-gradient(90deg,#d4a5b5,#f7d6e0)" },
+  { id:"happy",     emoji:"✨", name:"שמח וחי",  desc:"צבעים עזים, אנרגיה חגיגית, שמחה גדולה",  occasions:["יום הולדת","סיום גן","טיול","לימודים"], preview:"linear-gradient(90deg,#e8c94c,#f7a500)" },
+  { id:"modern",    emoji:"🎬", name:"קולנועי",  desc:"סגנון סרט, ניגודים חדים, יוקרתי ומרשים", occasions:["בר מצווה","גיוס","השקת עסק","הישג"], preview:"linear-gradient(90deg,#7a9fff,#4a6fff)" },
+  { id:"nostalgic", emoji:"📷", name:"נוסטלגי",  desc:"גוונים וינטג׳, אלבום ישן, זיכרון חם",     occasions:["גיל 50+","גמלאות","יובל נישואין"],       preview:"linear-gradient(90deg,#c4a882,#a07850)" },
+  { id:"dramatic",  emoji:"🌙", name:"דרמטי",    desc:"מעברים עוצמתיים, אור מהחושך, עוצר נשימה", occasions:["גיוס","בר מצווה","ניצחון"],            preview:"linear-gradient(90deg,#9b7fff,#6a3fff)" },
+  { id:"playful",   emoji:"🎈", name:"ילדותי",   desc:"קסם ושובבות, צבעים חמים, ספר ילדים חי",  occasions:["יום הולדת 1–5","כיתה א'","פורים"],    preview:"linear-gradient(90deg,#7fd4a0,#4aaa6a)" },
 ];
 
-// ── SHORT MUSIC LIBRARY (3-minute package — Basic + Premium) ──
+// ── ספריית מוזיקה קצרה (3 דקות — חבילות בסיסי + פרימיום) ──
 const MUSIC_LIBRARY_SHORT = {
-  "Romantic": [
-    { id:1,  name:"A Gentle Breeze",   artist:"The Fly Guy Five",  duration:"3:28", file:"a-gentle-breeze_romantic-1.mp3",    mood:"Romantic" },
-    { id:2,  name:"Beloved",           artist:"Tobias Voigt",      duration:"3:45", file:"beloved_romantic-2.mp3",            mood:"Romantic" },
-    { id:3,  name:"Pure Life",         artist:"Aakash Gandhi",     duration:"3:55", file:"pure-life_romantic-3.mp3",          mood:"Romantic" },
-    { id:4,  name:"Memories",          artist:"Bensound",          duration:"3:32", file:"memories_romantic-4.mp3",           mood:"Romantic" },
-    { id:5,  name:"Tenderness",        artist:"Aakash Gandhi",     duration:"3:20", file:"tenderness_romantic-5.mp3",         mood:"Romantic" },
+  "רומנטי": [
+    { id:1,  name:"A Gentle Breeze",   artist:"The Fly Guy Five",  duration:"3:28", file:"a-gentle-breeze_romantic-1.mp3",    mood:"רומנטי" },
+    { id:2,  name:"Beloved",           artist:"Tobias Voigt",      duration:"3:45", file:"beloved_romantic-2.mp3",            mood:"רומנטי" },
+    { id:3,  name:"Pure Life",         artist:"Aakash Gandhi",     duration:"3:55", file:"pure-life_romantic-3.mp3",          mood:"רומנטי" },
+    { id:4,  name:"Memories",          artist:"Bensound",          duration:"3:32", file:"memories_romantic-4.mp3",           mood:"רומנטי" },
+    { id:5,  name:"Tenderness",        artist:"Aakash Gandhi",     duration:"3:20", file:"tenderness_romantic-5.mp3",         mood:"רומנטי" },
   ],
-  "Joyful & Vibrant": [
-    { id:6,  name:"Happy Background",  artist:"Bensound",          duration:"3:24", file:"happy-background_happy-1.mp3",      mood:"Joyful & Vibrant" },
-    { id:7,  name:"Ukulele",           artist:"Bensound",          duration:"3:32", file:"ukulele_happy-2.mp3",               mood:"Joyful & Vibrant" },
-    { id:8,  name:"Sunny Days",        artist:"Loxbeats",          duration:"3:15", file:"sunny-days_happy-3.mp3",            mood:"Joyful & Vibrant" },
-    { id:9,  name:"Summer Smile",      artist:"Del",               duration:"3:40", file:"summer-smile_happy-4.mp3",          mood:"Joyful & Vibrant" },
-    { id:10, name:"Positive Carefree", artist:"Rafael Krux",       duration:"3:20", file:"positive-carefree_happy-5.mp3",     mood:"Joyful & Vibrant" },
+  "שמח וחי": [
+    { id:6,  name:"Happy Background",  artist:"Bensound",          duration:"3:24", file:"happy-background_happy-1.mp3",      mood:"שמח וחי" },
+    { id:7,  name:"Ukulele",           artist:"Bensound",          duration:"3:32", file:"ukulele_happy-2.mp3",               mood:"שמח וחי" },
+    { id:8,  name:"Sunny Days",        artist:"Loxbeats",          duration:"3:15", file:"sunny-days_happy-3.mp3",            mood:"שמח וחי" },
+    { id:9,  name:"Summer Smile",      artist:"Del",               duration:"3:40", file:"summer-smile_happy-4.mp3",          mood:"שמח וחי" },
+    { id:10, name:"Positive Carefree", artist:"Rafael Krux",       duration:"3:20", file:"positive-carefree_happy-5.mp3",     mood:"שמח וחי" },
   ],
-  "Cinematic": [
-    { id:11, name:"Inspiring",         artist:"Bensound",          duration:"3:10", file:"inspiring_cinematic-1.mp3",         mood:"Cinematic" },
-    { id:12, name:"Emergence",         artist:"Jimena Contreras",  duration:"3:20", file:"emergence_cinematic-2.mp3",         mood:"Cinematic" },
-    { id:13, name:"Epic Rise",         artist:"Rafael Krux",       duration:"3:15", file:"epic-rise_cinematic-3.mp3",         mood:"Cinematic" },
-    { id:14, name:"Cinematic Dawn",    artist:"Kevin MacLeod",     duration:"3:30", file:"cinematic-dawn_cinematic-4.mp3",    mood:"Cinematic" },
-    { id:15, name:"Tension",           artist:"Bensound",          duration:"3:58", file:"tension_cinematic-5.mp3",           mood:"Cinematic" },
+  "קולנועי": [
+    { id:11, name:"Inspiring",         artist:"Bensound",          duration:"3:10", file:"inspiring_cinematic-1.mp3",         mood:"קולנועי" },
+    { id:12, name:"Emergence",         artist:"Jimena Contreras",  duration:"3:20", file:"emergence_cinematic-2.mp3",         mood:"קולנועי" },
+    { id:13, name:"Epic Rise",         artist:"Rafael Krux",       duration:"3:15", file:"epic-rise_cinematic-3.mp3",         mood:"קולנועי" },
+    { id:14, name:"Cinematic Dawn",    artist:"Kevin MacLeod",     duration:"3:30", file:"cinematic-dawn_cinematic-4.mp3",    mood:"קולנועי" },
+    { id:15, name:"Tension",           artist:"Bensound",          duration:"3:58", file:"tension_cinematic-5.mp3",           mood:"קולנועי" },
   ],
-  "Nostalgic": [
-    { id:16, name:"Once Upon a Time",  artist:"DP Music",          duration:"3:50", file:"once-upon-a-time_nostalgic-1.mp3",  mood:"Nostalgic" },
-    { id:17, name:"Nostalgia",         artist:"Tobu",              duration:"3:45", file:"nostalgia_nostalgic-2.mp3",         mood:"Nostalgic" },
-    { id:18, name:"Sentimental",       artist:"Bensound",          duration:"3:36", file:"sentimental_nostalgic-3.mp3",       mood:"Nostalgic" },
-    { id:19, name:"Old Memories",      artist:"Everet Zeevalkink", duration:"3:50", file:"old-memories_nostalgic-4.mp3",      mood:"Nostalgic" },
-    { id:20, name:"Reflection",        artist:"Aakash Gandhi",     duration:"3:40", file:"reflection_nostalgic-5.mp3",        mood:"Nostalgic" },
+  "נוסטלגי": [
+    { id:16, name:"Once Upon a Time",  artist:"DP Music",          duration:"3:50", file:"once-upon-a-time_nostalgic-1.mp3",  mood:"נוסטלגי" },
+    { id:17, name:"Nostalgia",         artist:"Tobu",              duration:"3:45", file:"nostalgia_nostalgic-2.mp3",         mood:"נוסטלגי" },
+    { id:18, name:"Sentimental",       artist:"Bensound",          duration:"3:36", file:"sentimental_nostalgic-3.mp3",       mood:"נוסטלגי" },
+    { id:19, name:"Old Memories",      artist:"Everet Zeevalkink", duration:"3:50", file:"old-memories_nostalgic-4.mp3",      mood:"נוסטלגי" },
+    { id:20, name:"Reflection",        artist:"Aakash Gandhi",     duration:"3:40", file:"reflection_nostalgic-5.mp3",        mood:"נוסטלגי" },
   ],
-  "Dramatic": [
-    { id:21, name:"Darkness",          artist:"Bensound",          duration:"3:58", file:"darkness_dramatic-1.mp3",           mood:"Dramatic" },
-    { id:22, name:"Tension Rise",      artist:"Bensound",          duration:"3:30", file:"tension-rise_dramatic-2.mp3",       mood:"Dramatic" },
-    { id:23, name:"Power",             artist:"Rafael Krux",       duration:"3:45", file:"power_dramatic-3.mp3",              mood:"Dramatic" },
-    { id:24, name:"Storm",             artist:"Kevin MacLeod",     duration:"3:20", file:"storm_dramatic-4.mp3",              mood:"Dramatic" },
-    { id:25, name:"Rising",            artist:"Jimena Contreras",  duration:"3:50", file:"rising_dramatic-5.mp3",             mood:"Dramatic" },
+  "דרמטי": [
+    { id:21, name:"Darkness",          artist:"Bensound",          duration:"3:58", file:"darkness_dramatic-1.mp3",           mood:"דרמטי" },
+    { id:22, name:"Tension Rise",      artist:"Bensound",          duration:"3:30", file:"tension-rise_dramatic-2.mp3",       mood:"דרמטי" },
+    { id:23, name:"Power",             artist:"Rafael Krux",       duration:"3:45", file:"power_dramatic-3.mp3",              mood:"דרמטי" },
+    { id:24, name:"Storm",             artist:"Kevin MacLeod",     duration:"3:20", file:"storm_dramatic-4.mp3",              mood:"דרמטי" },
+    { id:25, name:"Rising",            artist:"Jimena Contreras",  duration:"3:50", file:"rising_dramatic-5.mp3",             mood:"דרמטי" },
   ],
-  "Playful": [
-    { id:26, name:"Sweet",             artist:"Bensound",          duration:"3:20", file:"sweet_playful-1.mp3",               mood:"Playful" },
-    { id:27, name:"Whimsical",         artist:"Aakash Gandhi",     duration:"3:15", file:"whimsical_playful-2.mp3",           mood:"Playful" },
-    { id:28, name:"Children Festival", artist:"Rafael Krux",       duration:"3:30", file:"children-festival_playful-3.mp3",   mood:"Playful" },
-    { id:29, name:"Happy Kids",        artist:"Loxbeats",          duration:"3:10", file:"happy-kids_playful-4.mp3",          mood:"Playful" },
-    { id:30, name:"Playful Day",       artist:"Bensound",          duration:"3:25", file:"playful-day_playful-5.mp3",         mood:"Playful" },
+  "ילדותי": [
+    { id:26, name:"Sweet",             artist:"Bensound",          duration:"3:20", file:"sweet_playful-1.mp3",               mood:"ילדותי" },
+    { id:27, name:"Whimsical",         artist:"Aakash Gandhi",     duration:"3:15", file:"whimsical_playful-2.mp3",           mood:"ילדותי" },
+    { id:28, name:"Children Festival", artist:"Rafael Krux",       duration:"3:30", file:"children-festival_playful-3.mp3",   mood:"ילדותי" },
+    { id:29, name:"Happy Kids",        artist:"Loxbeats",          duration:"3:10", file:"happy-kids_playful-4.mp3",          mood:"ילדותי" },
+    { id:30, name:"Playful Day",       artist:"Bensound",          duration:"3:25", file:"playful-day_playful-5.mp3",         mood:"ילדותי" },
   ],
 };
 
-// ── LONG MUSIC LIBRARY (4-minute package — VIP) ──
+// ── ספריית מוזיקה ארוכה (4 דקות — חבילת VIP) ──
 const MUSIC_LIBRARY_LONG = {
-  "Romantic": [
-    { id:101, name:"Weightless",          artist:"Marconi Union",      duration:"4:10", file:"weightless_romantic-long-1.mp3",           mood:"Romantic" },
-    { id:102, name:"Beloved Long",        artist:"Tobias Voigt",       duration:"4:30", file:"beloved-long_romantic-long-2.mp3",          mood:"Romantic" },
-    { id:103, name:"Eternal Love",        artist:"Aakash Gandhi",      duration:"4:20", file:"eternal-love_romantic-long-3.mp3",          mood:"Romantic" },
-    { id:104, name:"Romance",             artist:"Bensound",           duration:"4:05", file:"romance_romantic-long-4.mp3",               mood:"Romantic" },
-    { id:105, name:"Forever",             artist:"DP Music",           duration:"4:45", file:"forever_romantic-long-5.mp3",               mood:"Romantic" },
+  "רומנטי": [
+    { id:101, name:"Weightless",          artist:"Marconi Union",      duration:"4:10", file:"weightless_romantic-long-1.mp3",           mood:"רומנטי" },
+    { id:102, name:"Beloved Long",        artist:"Tobias Voigt",       duration:"4:30", file:"beloved-long_romantic-long-2.mp3",          mood:"רומנטי" },
+    { id:103, name:"Eternal Love",        artist:"Aakash Gandhi",      duration:"4:20", file:"eternal-love_romantic-long-3.mp3",          mood:"רומנטי" },
+    { id:104, name:"Romance",             artist:"Bensound",           duration:"4:05", file:"romance_romantic-long-4.mp3",               mood:"רומנטי" },
+    { id:105, name:"Forever",             artist:"DP Music",           duration:"4:45", file:"forever_romantic-long-5.mp3",               mood:"רומנטי" },
   ],
-  "Joyful & Vibrant": [
-    { id:106, name:"Celebration",         artist:"Bensound",           duration:"4:12", file:"celebration_happy-long-1.mp3",              mood:"Joyful & Vibrant" },
-    { id:107, name:"Joy",                 artist:"Rafael Krux",        duration:"4:05", file:"joy_happy-long-2.mp3",                      mood:"Joyful & Vibrant" },
-    { id:108, name:"Good Day",            artist:"Loxbeats",           duration:"4:20", file:"good-day_happy-long-3.mp3",                 mood:"Joyful & Vibrant" },
-    { id:109, name:"Sunshine",            artist:"Del",                duration:"4:15", file:"sunshine_happy-long-4.mp3",                 mood:"Joyful & Vibrant" },
-    { id:110, name:"Happy Together",      artist:"Aakash Gandhi",      duration:"4:30", file:"happy-together_happy-long-5.mp3",           mood:"Joyful & Vibrant" },
+  "שמח וחי": [
+    { id:106, name:"Celebration",         artist:"Bensound",           duration:"4:12", file:"celebration_happy-long-1.mp3",              mood:"שמח וחי" },
+    { id:107, name:"Joy",                 artist:"Rafael Krux",        duration:"4:05", file:"joy_happy-long-2.mp3",                      mood:"שמח וחי" },
+    { id:108, name:"Good Day",            artist:"Loxbeats",           duration:"4:20", file:"good-day_happy-long-3.mp3",                 mood:"שמח וחי" },
+    { id:109, name:"Sunshine",            artist:"Del",                duration:"4:15", file:"sunshine_happy-long-4.mp3",                 mood:"שמח וחי" },
+    { id:110, name:"Happy Together",      artist:"Aakash Gandhi",      duration:"4:30", file:"happy-together_happy-long-5.mp3",           mood:"שמח וחי" },
   ],
-  "Cinematic": [
-    { id:111, name:"Dreams",              artist:"Bensound",           duration:"4:45", file:"dreams_cinematic-long-1.mp3",               mood:"Cinematic" },
-    { id:112, name:"Epic Motivation",     artist:"Rafael Krux",        duration:"4:15", file:"epic-motivation_cinematic-long-2.mp3",      mood:"Cinematic" },
-    { id:113, name:"Cinematic Suspense",  artist:"Kevin MacLeod",      duration:"4:30", file:"cinematic-suspense_cinematic-long-3.mp3",   mood:"Cinematic" },
-    { id:114, name:"Inspiring Journey",   artist:"Jimena Contreras",   duration:"4:20", file:"inspiring-journey_cinematic-long-4.mp3",    mood:"Cinematic" },
-    { id:115, name:"Grand Vision",        artist:"DP Music",           duration:"4:40", file:"grand-vision_cinematic-long-5.mp3",         mood:"Cinematic" },
+  "קולנועי": [
+    { id:111, name:"Dreams",              artist:"Bensound",           duration:"4:45", file:"dreams_cinematic-long-1.mp3",               mood:"קולנועי" },
+    { id:112, name:"Epic Motivation",     artist:"Rafael Krux",        duration:"4:15", file:"epic-motivation_cinematic-long-2.mp3",      mood:"קולנועי" },
+    { id:113, name:"Cinematic Suspense",  artist:"Kevin MacLeod",      duration:"4:30", file:"cinematic-suspense_cinematic-long-3.mp3",   mood:"קולנועי" },
+    { id:114, name:"Inspiring Journey",   artist:"Jimena Contreras",   duration:"4:20", file:"inspiring-journey_cinematic-long-4.mp3",    mood:"קולנועי" },
+    { id:115, name:"Grand Vision",        artist:"DP Music",           duration:"4:40", file:"grand-vision_cinematic-long-5.mp3",         mood:"קולנועי" },
   ],
-  "Nostalgic": [
-    { id:116, name:"Old Memories Long",   artist:"Everet Zeevalkink",  duration:"4:00", file:"old-memories-long_nostalgic-long-1.mp3",    mood:"Nostalgic" },
-    { id:117, name:"Yesterday",           artist:"Bensound",           duration:"4:15", file:"yesterday_nostalgic-long-2.mp3",            mood:"Nostalgic" },
-    { id:118, name:"Times Gone By",       artist:"Tobu",               duration:"4:30", file:"times-gone-by_nostalgic-long-3.mp3",        mood:"Nostalgic" },
-    { id:119, name:"Long Ago",            artist:"Aakash Gandhi",      duration:"4:10", file:"long-ago_nostalgic-long-4.mp3",             mood:"Nostalgic" },
-    { id:120, name:"Sweet Memories",      artist:"DP Music",           duration:"4:45", file:"sweet-memories_nostalgic-long-5.mp3",       mood:"Nostalgic" },
+  "נוסטלגי": [
+    { id:116, name:"Old Memories Long",   artist:"Everet Zeevalkink",  duration:"4:00", file:"old-memories-long_nostalgic-long-1.mp3",    mood:"נוסטלגי" },
+    { id:117, name:"Yesterday",           artist:"Bensound",           duration:"4:15", file:"yesterday_nostalgic-long-2.mp3",            mood:"נוסטלגי" },
+    { id:118, name:"Times Gone By",       artist:"Tobu",               duration:"4:30", file:"times-gone-by_nostalgic-long-3.mp3",        mood:"נוסטלגי" },
+    { id:119, name:"Long Ago",            artist:"Aakash Gandhi",      duration:"4:10", file:"long-ago_nostalgic-long-4.mp3",             mood:"נוסטלגי" },
+    { id:120, name:"Sweet Memories",      artist:"DP Music",           duration:"4:45", file:"sweet-memories_nostalgic-long-5.mp3",       mood:"נוסטלגי" },
   ],
-  "Dramatic": [
-    { id:121, name:"Darkness Long",       artist:"Bensound",           duration:"4:12", file:"darkness-long_dramatic-long-1.mp3",         mood:"Dramatic" },
-    { id:122, name:"Epic Trailer",        artist:"Rafael Krux",        duration:"4:40", file:"epic-trailer_dramatic-long-2.mp3",          mood:"Dramatic" },
-    { id:123, name:"Into the Unknown",    artist:"Jimena Contreras",   duration:"4:15", file:"into-the-unknown_dramatic-long-3.mp3",      mood:"Dramatic" },
-    { id:124, name:"Powerful Cinematic",  artist:"Kevin MacLeod",      duration:"4:20", file:"powerful-cinematic_dramatic-long-4.mp3",    mood:"Dramatic" },
-    { id:125, name:"Thunder",             artist:"DP Music",           duration:"4:35", file:"thunder_dramatic-long-5.mp3",               mood:"Dramatic" },
+  "דרמטי": [
+    { id:121, name:"Darkness Long",       artist:"Bensound",           duration:"4:12", file:"darkness-long_dramatic-long-1.mp3",         mood:"דרמטי" },
+    { id:122, name:"Epic Trailer",        artist:"Rafael Krux",        duration:"4:40", file:"epic-trailer_dramatic-long-2.mp3",          mood:"דרמטי" },
+    { id:123, name:"Into the Unknown",    artist:"Jimena Contreras",   duration:"4:15", file:"into-the-unknown_dramatic-long-3.mp3",      mood:"דרמטי" },
+    { id:124, name:"Powerful Cinematic",  artist:"Kevin MacLeod",      duration:"4:20", file:"powerful-cinematic_dramatic-long-4.mp3",    mood:"דרמטי" },
+    { id:125, name:"Thunder",             artist:"DP Music",           duration:"4:35", file:"thunder_dramatic-long-5.mp3",               mood:"דרמטי" },
   ],
-  "Playful": [
-    { id:126, name:"Cute Long",           artist:"Bensound",           duration:"4:05", file:"cute-long_playful-long-1.mp3",              mood:"Playful" },
-    { id:127, name:"Adventure",           artist:"Rafael Krux",        duration:"4:20", file:"adventure_playful-long-2.mp3",              mood:"Playful" },
-    { id:128, name:"Magic Garden",        artist:"Aakash Gandhi",      duration:"4:10", file:"magic-garden_playful-long-3.mp3",           mood:"Playful" },
-    { id:129, name:"Fairy Tale",          artist:"DP Music",           duration:"4:30", file:"fairy-tale_playful-long-4.mp3",             mood:"Playful" },
-    { id:130, name:"Rainbow",             artist:"Loxbeats",           duration:"4:15", file:"rainbow_playful-long-5.mp3",               mood:"Playful" },
+  "ילדותי": [
+    { id:126, name:"Cute Long",           artist:"Bensound",           duration:"4:05", file:"cute-long_playful-long-1.mp3",              mood:"ילדותי" },
+    { id:127, name:"Adventure",           artist:"Rafael Krux",        duration:"4:20", file:"adventure_playful-long-2.mp3",              mood:"ילדותי" },
+    { id:128, name:"Magic Garden",        artist:"Aakash Gandhi",      duration:"4:10", file:"magic-garden_playful-long-3.mp3",           mood:"ילדותי" },
+    { id:129, name:"Fairy Tale",          artist:"DP Music",           duration:"4:30", file:"fairy-tale_playful-long-4.mp3",             mood:"ילדותי" },
+    { id:130, name:"Rainbow",             artist:"Loxbeats",           duration:"4:15", file:"rainbow_playful-long-5.mp3",               mood:"ילדותי" },
   ],
 };
 
@@ -396,36 +389,36 @@ function StepPackage({ onSelect }) {
     <div>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <h1 className="serif" style={{ fontSize: 42, lineHeight: 1.2, marginBottom: 16, letterSpacing: "-0.02em", color: "#e8e2d9" }}>
-          Your memories <span style={{ color: "#c9a84c" }}>come back to life</span>
+          הזיכרונות שלכם <span style={{ color: "#c9a84c" }}>חוזרים לחיים</span>
         </h1>
         <p style={{ color: "#8a8b9e", fontSize: 16, lineHeight: 1.8, maxWidth: 540, margin: "0 auto" }}>
-          From your own photos, we create a moving personal memory video — delivered ready to watch on a luxury digital picture frame for your home
+          מהתמונות שלכם ניצור סרטון אישי מרגש, שמגיע מוכן לצפייה בתוך מסגרת דיגיטלית יוקרתית לבית
         </p>
       </div>
 
       {/* Hero image — frame in use + gift box, with integrated benefits caption */}
       <div className="hero-image-wrap">
-        <img src="/frame-gift-hero.jpg" alt="Moments of Life digital frame at home and in luxury packaging" />
+        <img src="/frame-gift-hero.jpg" alt="מסגרת דיגיטלית רגעים של החיים בבית ובאריזה יוקרתית" />
         <div className="benefits-grid">
           <div className="benefit-card">
             <div className="benefit-icon">🎬</div>
-            <div className="benefit-title">A custom memory video</div>
-            <div className="benefit-sub">Made from your photos, with music and a story</div>
+            <div className="benefit-title">סרטון זיכרון מותאם אישית</div>
+            <div className="benefit-sub">מהתמונות שלכם, עם מוזיקה וסיפור</div>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">🖼️</div>
-            <div className="benefit-title">A smart touchscreen digital frame</div>
-            <div className="benefit-sub">The video comes pre-loaded on it (Premium & VIP)</div>
+            <div className="benefit-title">מסגרת דיגיטלית חכמה עם מסך מגע</div>
+            <div className="benefit-sub">הסרטון כבר מותקן עליה (פרימיום ו-VIP)</div>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">📱</div>
-            <div className="benefit-title">Updates right from your phone</div>
-            <div className="benefit-sub">Send new photos to it anytime</div>
+            <div className="benefit-title">מתעדכנת ישירות מהנייד</div>
+            <div className="benefit-sub">שולחים תמונות חדשות בכל רגע</div>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">🎁</div>
-            <div className="benefit-title">Beautifully designed packaging</div>
-            <div className="benefit-sub">The perfect gift for any occasion</div>
+            <div className="benefit-title">אריזה יוקרתית מעוצבת</div>
+            <div className="benefit-sub">מתנה מושלמת לכל אירוע</div>
           </div>
         </div>
       </div>
@@ -434,12 +427,12 @@ function StepPackage({ onSelect }) {
       <div style={{ marginBottom: 20, borderRadius: 16, overflow: "hidden", background: "#0d0e14", border: "1px solid #2a2b38" }}>
         <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c9a84c" }} />
-          <span style={{ fontSize: 13, color: "#6b6c7e" }}>Sample video — here's what a memory video we made looks like</span>
+          <span style={{ fontSize: 13, color: "#6b6c7e" }}>סרטון דוגמא — ככה נראה סרטון זיכרון שיצרנו</span>
         </div>
         <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
           <iframe
             src="https://www.youtube.com/embed/Qdrh4a72yNQ?rel=0&modestbranding=1"
-            title="Sample video - Moments of Life"
+            title="סרטון דוגמא - רגעים של החיים"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -452,12 +445,12 @@ function StepPackage({ onSelect }) {
       <div style={{ marginBottom: 40, borderRadius: 16, overflow: "hidden", background: "#0d0e14", border: "1px solid #2a2b38" }}>
         <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c9a84c" }} />
-          <span style={{ fontSize: 13, color: "#6b6c7e" }}>🎁 The digital frame — see the gift-unboxing experience</span>
+          <span style={{ fontSize: 13, color: "#6b6c7e" }}>🎁 המסגרת הדיגיטלית — ראו את חוויית פתיחת המתנה</span>
         </div>
         <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
           <iframe
             src="https://www.youtube.com/embed/cztUZUbTyZ4?rel=0&modestbranding=1"
-            title="Unboxing - Moments of Life digital frame"
+            title="פתיחת מתנה - מסגרת דיגיטלית רגעים של החיים"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -486,7 +479,7 @@ function StepPackage({ onSelect }) {
             </ul>
 
             <button className={`btn-select ${pkg.highlight ? "btn-select-gold" : "btn-select-outline"}`}>
-              Choose this package
+              בחר חבילה זו
             </button>
           </div>
         ))}
@@ -494,14 +487,14 @@ function StepPackage({ onSelect }) {
 
       {/* Frame bonus note */}
       <div style={{ marginTop: 24, padding: "16px 20px", background: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.18)", borderRadius: 12, display: "flex", alignItems: "center", gap: 16 }}>
-        <img src="/frame-display.jpg" alt="Digital picture frame" style={{ width: 90, height: 65, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+        <img src="/frame-display.jpg" alt="מסגרת דיגיטלית" style={{ width: 90, height: 65, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
         <p style={{ fontSize: 14, color: "#a0a1b5", lineHeight: 1.6, margin: 0 }}>
-          <strong style={{ color: "#c9a84c" }}>The frame doesn't just play your video</strong> — it also displays any photo you send to it from your phone, with one tap. A beautiful, living piece of decor for the home.
+          <strong style={{ color: "#c9a84c" }}>המסגרת לא רק מנגנת את הסרטון שלכם</strong> — היא גם מציגה כל תמונה שתשלחו אליה מהטלפון, בלחיצה אחת. רהיט חי ויפה לבית.
         </p>
       </div>
 
       <p style={{ marginTop: 14, textAlign: "center", fontSize: 13, color: "#6b6c7e" }}>
-        ⏱ Estimated delivery: within 14 business days
+        ⏱ זמן הגעת המשלוח: עד 14 ימי עסקים
       </p>
     </div>
   );
@@ -509,7 +502,7 @@ function StepPackage({ onSelect }) {
 
 // ── PROGRESS BAR ──────────────────────────────────────────────
 function ProgressBar({ step }) {
-  const steps = ["Photos", "Style", "Music", "Summary"];
+  const steps = ["תמונות", "סגנון", "פסקול", "סיכום"];
   const items = [];
   steps.forEach((label, i) => {
     items.push(
@@ -630,18 +623,18 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-        <h2 className="serif" style={{ fontSize: 24, color: "#e8e2d9" }}>Upload your photos</h2>
+        <h2 className="serif" style={{ fontSize: 24, color: "#e8e2d9" }}>העלו את התמונות שלכם</h2>
         <div style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 8, padding: "6px 14px", fontSize: 13, color: "#c9a84c", fontWeight: 700, flexShrink: 0 }}>
-          {photos.length} / {maxPhotos} photos
+          {photos.length} / {maxPhotos} תמונות
         </div>
       </div>
       <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 14, lineHeight: 1.6 }}>
-        The <strong style={{ color: "#c9a84c" }}>{pkg.name}</strong> package includes up to <strong style={{ color: "#c9a84c" }}>{maxPhotos} photos</strong>.
-        Once uploaded, you can drag to arrange them in chronological order, and add a few words about the transition between any two photos (optional).
+        חבילת <strong style={{ color: "#c9a84c" }}>{pkg.name}</strong> כוללת עד <strong style={{ color: "#c9a84c" }}>{maxPhotos} תמונות</strong>.
+        לאחר ההעלאה ניתן לגרור ולסדר את התמונות לפי סדר כרונולוגי, ובין כל שתי תמונות ניתן לרשום 3 מילים על המעבר (לא חובה).
       </p>
 
       <p style={{ color: "#e8e2d9", fontSize: 14, marginBottom: 20, lineHeight: 1.7, background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 8, padding: "10px 14px" }}>
-        ⚠️ <strong style={{ color: "#c9a84c" }}>Important:</strong> choose photos where faces are as clear and visible as possible — this directly affects the quality of the final video. Landscape-orientation photos are preferred <strong style={{ color: "#c9a84c" }}>(not required)</strong>.
+        ⚠️ <strong style={{ color: "#c9a84c" }}>חשוב:</strong> בחרו תמונות שבהן הפנים ברורות וגלויות ככל האפשר — זה משפיע ישירות על איכות הסרטון הסופי. עדיפות לתמונות לרוחב <strong style={{ color: "#c9a84c" }}>(לא חובה)</strong>.
       </p>
 
       {photos.length < maxPhotos && (
@@ -653,9 +646,9 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
           onDrop={onZoneDrop}
         >
           <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
-          <p style={{ fontWeight: 600, marginBottom: 4, color: "#e8e2d9" }}>Drag photos here</p>
-          <p style={{ color: "#6b6c7e", fontSize: 12 }}>or click to choose files · JPG, PNG, HEIC</p>
-          <p style={{ color: "#4a4b5e", fontSize: 11, marginTop: 6 }}>{maxPhotos - photos.length} slots remaining</p>
+          <p style={{ fontWeight: 600, marginBottom: 4, color: "#e8e2d9" }}>גרור תמונות לכאן</p>
+          <p style={{ color: "#6b6c7e", fontSize: 12 }}>או לחץ לבחירת קבצים · JPG, PNG, HEIC</p>
+          <p style={{ color: "#4a4b5e", fontSize: 11, marginTop: 6 }}>נותרו {maxPhotos - photos.length} מקומות</p>
           <input ref={inputRef} type="file" multiple accept="image/*" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
         </div>
       )}
@@ -663,8 +656,8 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
       {photos.length > 0 && (
         <div className="timeline-wrap">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, marginTop: 18 }}>
-            <span style={{ fontSize: 12, color: "#6b6c7e" }}>↕️ Drag to reorder chronologically</span>
-            <button className="btn-ghost" style={{ padding: "4px 12px", fontSize: 11 }} onClick={() => setPhotos([])}>Clear all</button>
+            <span style={{ fontSize: 12, color: "#6b6c7e" }}>↕️ גרור כדי לשנות סדר כרונולוגי</span>
+            <button className="btn-ghost" style={{ padding: "4px 12px", fontSize: 11 }} onClick={() => setPhotos([])}>נקה הכל</button>
           </div>
 
           {photos.map((photo, idx) => {
@@ -694,15 +687,15 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
                     <button className="photo-remove" onClick={e => { e.stopPropagation(); removePhoto(photo.id); }}>✕</button>
                   </div>
                   <div style={{ flex: 1, fontSize: 12, color: "#6b6c7e" }}>
-                    Photo {idx + 1}
-                    {idx === 0 && <span style={{ color: "#4a4b5e", marginLeft: 6 }}>· first</span>}
-                    {idx === photos.length - 1 && <span style={{ color: "#4a4b5e", marginLeft: 6 }}>· last</span>}
+                    תמונה {idx + 1}
+                    {idx === 0 && <span style={{ color: "#4a4b5e", marginRight: 6 }}>· ראשונה</span>}
+                    {idx === photos.length - 1 && <span style={{ color: "#4a4b5e", marginRight: 6 }}>· אחרונה</span>}
                   </div>
                 </div>
 
                 {/* Connector + scene note between photos */}
                 {showConnector && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, paddingLeft: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, paddingRight: 4 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 80, flexShrink: 0 }}>
                       <div style={{ width: 1, height: 8, background: "#3a3b4a" }} />
                       <div style={{ fontSize: 14, color: "#3a3b4a" }}>↕</div>
@@ -710,7 +703,7 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
                     </div>
                     <input
                       className="scene-input"
-                      placeholder={`A few words about this transition (optional) — e.g.: their first birthday`}
+                      placeholder={`ניתן לרשום 3 מילים על המעבר (לא חובה) — למשל: יום הולדת ראשון`}
                       value={sceneNotes[idx] || ""}
                       onChange={e => updateNote(idx, e.target.value)}
                       maxLength={40}
@@ -724,9 +717,9 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
       )}
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
-        <button className="btn-ghost" onClick={onBack}>← Back to packages</button>
+        <button className="btn-ghost" onClick={onBack}>→ חזרה לחבילות</button>
         <button className="btn-gold" onClick={onNext} disabled={photos.length === 0}>
-          Continue to style selection →
+          המשך לבחירת סגנון ←
         </button>
       </div>
     </div>
@@ -737,8 +730,8 @@ function StepUpload({ pkg, photos, setPhotos, sceneNotes, setSceneNotes, onNext,
 function StepStyle({ selected, setSelected, onNext, onBack }) {
   return (
     <div className="card">
-      <h2 className="serif" style={{ fontSize: 24, marginBottom: 8, color: "#e8e2d9" }}>Choose a style</h2>
-      <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>Each style suits different occasions — pick the one that feels right.</p>
+      <h2 className="serif" style={{ fontSize: 24, marginBottom: 8, color: "#e8e2d9" }}>בחרו את הסגנון</h2>
+      <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>כל סגנון מתאים לאירועים שונים — בחרו את זה שמרגיש נכון.</p>
       <div className="style-grid">
         {STYLES_DATA.map(s => (
           <div key={s.id} className={`style-card ${selected === s.id ? "selected" : ""}`} onClick={() => setSelected(s.id)}>
@@ -756,11 +749,11 @@ function StepStyle({ selected, setSelected, onNext, onBack }) {
         ))}
       </div>
       <div style={{ marginTop: 16, padding: "10px 14px", background: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.15)", borderRadius: 10, fontSize: 12, color: "#8a8b9e", textAlign: "center" }}>
-        💡 Not sure? For growing-up videos and family milestones — <span style={{ color: "#c9a84c", fontWeight: 600 }}>Romantic</span> works beautifully almost every time
+        💡 לא בטוחים? לסרטוני גדילה ואירועים משפחתיים — <span style={{ color: "#c9a84c", fontWeight: 600 }}>רומנטי</span> כמעט תמיד עובד מושלם
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 22 }}>
-        <button className="btn-ghost" onClick={onBack}>← Back</button>
-        <button className="btn-gold" onClick={onNext} disabled={!selected}>Continue to music selection →</button>
+        <button className="btn-ghost" onClick={onBack}>→ חזרה</button>
+        <button className="btn-gold" onClick={onNext} disabled={!selected}>המשך לבחירת מוזיקה ←</button>
       </div>
     </div>
   );
@@ -804,14 +797,14 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h2 className="serif" style={{ fontSize: 24, color: "#e8e2d9" }}>Choose a soundtrack</h2>
+        <h2 className="serif" style={{ fontSize: 24, color: "#e8e2d9" }}>בחרו פסקול</h2>
         <div style={{ fontSize: 11, padding: "4px 12px", borderRadius: 20, background: isVIP ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${isVIP ? "#c9a84c" : "#3a3b4a"}`, color: isVIP ? "#c9a84c" : "#6b6c7e" }}>
-          {isVIP ? "👑 4+ minute songs" : "3-minute songs"}
+          {isVIP ? "👑 שירים 4+ דקות" : "שירים 3 דקות"}
         </div>
       </div>
-      <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 20 }}>Press ▶ to preview, and pick the music that feels right to you.</p>
+      <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 20 }}>לחצו על ▶ להאזנה ובחרו את המוזיקה שמרגישה נכון לכם.</p>
 
-      {/* Mini audio player */}
+      {/* YouTube mini player */}
       {showPlayer && currentYtId && (
         <div style={{ marginBottom: 16, borderRadius: 10, padding: "12px 16px", border: "1px solid #c9a84c", background: "rgba(201,168,76,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 20 }}>🎵</span>
@@ -843,7 +836,7 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
             <button
               className={`music-play-btn ${playing === track.id ? "playing" : ""}`}
               onClick={e => handlePlay(e, track)}
-              title="Preview this track"
+              title="האזנה לשיר"
             >
               {playing === track.id ? "⏹" : "▶"}
             </button>
@@ -865,7 +858,7 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
       {/* Upload custom track */}
       <div style={{ borderTop: "1px solid #2a2b38", paddingTop: 16 }}>
         <p style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 10 }}>
-          🎵 Didn't find the right song? You can upload your own:
+          🎵 לא מצאתם את השיר שרצית? ניתן להעלות שיר משלכם:
         </p>
         <div
           style={{ border: `2px dashed ${selected === "custom" ? "#c9a84c" : "#3a3b4a"}`, borderRadius: 10, padding: "14px 16px", cursor: "pointer", background: selected === "custom" ? "rgba(201,168,76,0.06)" : "#0d0e14", display: "flex", alignItems: "center", gap: 12, transition: "all 0.2s" }}
@@ -875,7 +868,7 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
           <div style={{ flex: 1 }}>
             {customTrack
               ? <div style={{ fontWeight: 600, fontSize: 13, color: "#c9a84c" }}>✓ {customTrack.name}</div>
-              : <div style={{ fontSize: 13, color: "#8a8b9e" }}>Click to upload an MP3 / WAV file</div>
+              : <div style={{ fontSize: 13, color: "#8a8b9e" }}>לחץ להעלאת קובץ MP3 / WAV</div>
             }
           </div>
           {selected === "custom" && <div style={{ color: "#c9a84c", fontWeight: 700 }}>✓</div>}
@@ -884,8 +877,8 @@ function StepMusic({ pkg, selected, setSelected, customTrack, setCustomTrack, on
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
-        <button className="btn-ghost" onClick={onBack}>← Back</button>
-        <button className="btn-gold" onClick={onNext} disabled={!selected}>Continue to summary →</button>
+        <button className="btn-ghost" onClick={onBack}>→ חזרה</button>
+        <button className="btn-gold" onClick={onNext} disabled={!selected}>לסיכום וסיום ←</button>
       </div>
     </div>
   );
@@ -897,11 +890,9 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [aptUnit, setAptUnit] = useState("");
   const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -909,16 +900,16 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
   const [orderId] = useState(() => Math.random().toString(36).substr(2, 8).toUpperCase());
 
   const styleObj = STYLES_DATA.find(s => s.id === style);
-  const trackObj = music === "custom" ? { name: customTrack?.name || "Custom uploaded song", artist: "Personal upload" } : ALL_TRACKS.find(t => t.id === music);
+  const trackObj = music === "custom" ? { name: customTrack?.name || "שיר מותאם אישית", artist: "העלאה אישית" } : ALL_TRACKS.find(t => t.id === music);
 
   const inputSt = { width: "100%", background: "#0d0e14", border: "1px solid #3a3b4a", borderRadius: 8, padding: "11px 14px", color: "#e8e2d9", fontSize: 13, fontFamily: "'Inter',sans-serif", outline: "none", marginTop: 5, display: "block", transition: "border-color 0.2s" };
 
   const handleSubmit = async () => {
-    if (!firstName || !lastName || !email || !phone || !streetAddress || !city || !state || !zip) return;
+    if (!firstName || !lastName || !email || !phone || !city || !street || !houseNumber) return;
     setLoading(true);
     setError(null);
     try {
-      // 1. Upload photos to Storage
+      // 1. העלאת תמונות ל-Storage
       const photoURLs = await Promise.all(photos.map(async (photo, idx) => {
         const response = await fetch(photo.url);
         const blob = await response.blob();
@@ -928,7 +919,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         return { index: idx + 1, url, name: photo.name };
       }));
 
-      // 2. Upload custom song, if any
+      // 2. העלאת שיר אישי אם יש
       let customTrackURL = null;
       if (music === "custom" && customTrack?.file) {
         const trackRef = ref(storage, `orders/${orderId}/custom-track-${customTrack.name}`);
@@ -936,7 +927,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         customTrackURL = await getDownloadURL(trackRef);
       }
 
-      // 3. Save order details to Firestore
+      // 3. שמירת פרטי ההזמנה ב-Firestore
       await addDoc(collection(db, "orders"), {
         orderId,
         firstName,
@@ -944,11 +935,9 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         name: `${firstName} ${lastName}`.trim(),
         email,
         phone,
-        streetAddress,
-        aptUnit: aptUnit || "",
         city,
-        state,
-        zip,
+        street,
+        houseNumber,
         notes: notes || "",
         sceneNotes: (sceneNotes || []).map(n => n || ""),
         package: pkg.name,
@@ -957,13 +946,13 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         photos: photoURLs,
         style: styleObj?.name || style || "",
         music: music === "custom" ? (customTrack?.name || "") : (trackObj?.name || ""),
-        musicArtist: music === "custom" ? "Personal upload" : (trackObj?.artist || ""),
+        musicArtist: music === "custom" ? "העלאה אישית" : (trackObj?.artist || ""),
         customTrackURL: customTrackURL || "",
-        status: "New",
+        status: "חדשה",
         createdAt: serverTimestamp(),
       });
 
-      // 4. Send confirmation email to customer + notification email to admin
+      // 4. שליחת מייל אישור ללקוח + מייל התראה לבעל העסק
       await Promise.all([
         sendEmail(EMAILJS_TEMPLATE_CUSTOMER, {
           to_email: email,
@@ -979,11 +968,9 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
           last_name: lastName,
           customer_email: email,
           phone,
-          street_address: streetAddress,
-          apt_unit: aptUnit || "",
           city,
-          state,
-          zip,
+          street,
+          house_number: houseNumber,
           order_id: orderId,
           package_name: pkg.name,
           package_price: pkg.price,
@@ -992,7 +979,7 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         }),
       ]);
 
-      // 5. Redirect to payment (only if the integration is enabled - see safety switch at top of file)
+      // 5. הפניה לתשלום (רק אם האינטגרציה מופעלת - ראו מתג הבטיחות בראש הקובץ)
       if (PAYMENT_INTEGRATION_ENABLED) {
         try {
           const paymentRes = await fetch("/api/create-payment", {
@@ -1011,19 +998,19 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
           const paymentData = await paymentRes.json();
           if (paymentRes.ok && paymentData.redirectUrl) {
             window.location.href = paymentData.redirectUrl;
-            return; // stop here - customer is already headed to the payment page
+            return; // עוצרים כאן - הלקוח כבר בדרך לדף התשלום
           }
-          console.error("Payment creation failed, continuing to normal thank-you page:", paymentData);
+          console.error("יצירת תשלום נכשלה, ממשיכים לדף תודה רגיל:", paymentData);
         } catch (paymentErr) {
-          // if payment creation fails, don't block the customer - continue to the normal thank-you page
-          console.error("Error calling create-payment:", paymentErr);
+          // אם משהו נכשל בתשלום, לא "תוקעים" את הלקוח - ממשיכים לדף התודה הרגיל
+          console.error("שגיאה בקריאה ל-create-payment:", paymentErr);
         }
       }
 
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setError("Something went wrong submitting your order. Please try again.");
+      setError("אירעה שגיאה בשליחת ההזמנה. נסה שוב.");
     } finally {
       setLoading(false);
     }
@@ -1033,15 +1020,15 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
     return (
       <div className="card" style={{ textAlign: "center", padding: "56px 28px" }}>
         <div className="success-ring">🎬</div>
-        <h2 className="serif" style={{ fontSize: 28, marginBottom: 10, color: "#e8e2d9" }}>Order received!</h2>
+        <h2 className="serif" style={{ fontSize: 28, marginBottom: 10, color: "#e8e2d9" }}>ההזמנה התקבלה!</h2>
         <p style={{ color: "#6b6c7e", fontSize: 14, lineHeight: 1.7, maxWidth: 380, margin: "0 auto 20px" }}>
-          Thank you, {firstName}! We've received everything we need to create your video. We're already getting to work and will be in touch soon.
+          תודה {firstName}! קיבלנו את כל הפרטים כדי לייצר עבורך את הסרטון. אנחנו כבר מתחילים לעבוד עליו וניצור איתך קשר בהקדם.
         </p>
         <p style={{ color: "#6b6c7e", fontSize: 13, textAlign: "center", marginTop: -12, marginBottom: 20 }}>
-          ⏱ Estimated delivery: within 14 business days
+          ⏱ זמן הגעת המשלוח: עד 14 ימי עסקים
         </p>
         <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, padding: "14px 22px", display: "inline-block" }}>
-          <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>Order number</div>
+          <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>מספר הזמנה</div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#c9a84c", fontFamily: "monospace" }}>#{orderId}</div>
         </div>
       </div>
@@ -1050,17 +1037,17 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
 
   return (
     <div className="card">
-      <h2 className="serif" style={{ fontSize: 24, marginBottom: 8, color: "#e8e2d9" }}>Summary & your details</h2>
-      <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>Double-check everything below and complete your order.</p>
+      <h2 className="serif" style={{ fontSize: 24, marginBottom: 8, color: "#e8e2d9" }}>סיכום ופרטים אישיים</h2>
+      <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>בדקו שהכל נכון וסיימו את ההזמנה.</p>
       <div style={{ background: "#0d0e14", borderRadius: 10, padding: "2px 14px", marginBottom: 24 }}>
         {[
-          ["Package", pkg.name],
-          ["Photos uploaded", `${photos.length} photos`],
-          ["Style", `${styleObj?.emoji} ${styleObj?.name}`],
-          ["Soundtrack", `${trackObj?.name} — ${trackObj?.artist}`],
-          ["Video length", pkg.duration],
-          pkg.hasFrame ? ["Digital frame", pkg.frameSize] : null,
-          ["Price", pkg.price],
+          ["חבילה", pkg.name],
+          ["תמונות שהועלו", `${photos.length} תמונות`],
+          ["סגנון", `${styleObj?.emoji} ${styleObj?.name}`],
+          ["פסקול", `${trackObj?.name} — ${trackObj?.artist}`],
+          ["אורך סרטון", pkg.duration],
+          pkg.hasFrame ? ["מסגרת דיגיטלית", pkg.frameSize] : null,
+          ["מחיר", pkg.price],
         ].filter(Boolean).map(([key, val]) => (
           <div key={key} className="summary-row">
             <span className="summary-key">{key}</span>
@@ -1071,47 +1058,39 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: "#6b6c7e" }}>First name *</label>
-            <input style={inputSt} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jane" />
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>שם פרטי *</label>
+            <input style={inputSt} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="ישראל" />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: "#6b6c7e" }}>Last name *</label>
-            <input style={inputSt} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" />
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>שם משפחה *</label>
+            <input style={inputSt} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="ישראלי" />
           </div>
         </div>
         <div>
-          <label style={{ fontSize: 12, color: "#6b6c7e" }}>Email *</label>
+          <label style={{ fontSize: 12, color: "#6b6c7e" }}>אימייל *</label>
           <input type="email" style={inputSt} value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" />
         </div>
         <div>
-          <label style={{ fontSize: 12, color: "#6b6c7e" }}>Phone *</label>
-          <input style={inputSt} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 000-0000" />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: "#6b6c7e" }}>Street address *</label>
-          <input style={inputSt} value={streetAddress} onChange={e => setStreetAddress(e.target.value)} placeholder="123 Main St" />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: "#6b6c7e" }}>Apt / Unit (optional)</label>
-          <input style={inputSt} value={aptUnit} onChange={e => setAptUnit(e.target.value)} placeholder="Apt 4B" />
+          <label style={{ fontSize: 12, color: "#6b6c7e" }}>טלפון *</label>
+          <input style={inputSt} value={phone} onChange={e => setPhone(e.target.value)} placeholder="050-0000000" />
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <div style={{ flex: 2 }}>
-            <label style={{ fontSize: 12, color: "#6b6c7e" }}>City *</label>
-            <input style={inputSt} value={city} onChange={e => setCity(e.target.value)} placeholder="Austin" />
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>עיר *</label>
+            <input style={inputSt} value={city} onChange={e => setCity(e.target.value)} placeholder="תל אביב" />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>רחוב *</label>
+            <input style={inputSt} value={street} onChange={e => setStreet(e.target.value)} placeholder="הרצל" />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: "#6b6c7e" }}>State *</label>
-            <input style={inputSt} value={state} onChange={e => setState(e.target.value)} placeholder="TX" maxLength={2} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: "#6b6c7e" }}>ZIP *</label>
-            <input style={inputSt} value={zip} onChange={e => setZip(e.target.value)} placeholder="73301" />
+            <label style={{ fontSize: 12, color: "#6b6c7e" }}>מספר בית *</label>
+            <input style={inputSt} value={houseNumber} onChange={e => setHouseNumber(e.target.value)} placeholder="12" />
           </div>
         </div>
         <div>
-          <label style={{ fontSize: 12, color: "#6b6c7e" }}>Notes (optional)</label>
-          <textarea style={{ ...inputSt, resize: "vertical", minHeight: 70 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="For example: birthday gift, the child's name is..." />
+          <label style={{ fontSize: 12, color: "#6b6c7e" }}>הערות (אופציונלי)</label>
+          <textarea style={{ ...inputSt, resize: "vertical", minHeight: 70 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="לדוגמא: מתנה ליום הולדת, שם הילד הוא..." />
         </div>
       </div>
       {error && (
@@ -1120,9 +1099,9 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         </div>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28 }}>
-        <button className="btn-ghost" onClick={onBack} disabled={loading}>← Back</button>
-        <button className="btn-gold" onClick={handleSubmit} disabled={!firstName || !lastName || !email || !phone || !streetAddress || !city || !state || !zip || loading}>
-          {loading ? "⏳ Submitting order..." : "🎬 Submit order"}
+        <button className="btn-ghost" onClick={onBack} disabled={loading}>→ חזרה</button>
+        <button className="btn-gold" onClick={handleSubmit} disabled={!firstName || !lastName || !email || !phone || !city || !street || !houseNumber || loading}>
+          {loading ? "⏳ שולח הזמנה..." : "🎬 שלח הזמנה"}
         </button>
       </div>
     </div>
@@ -1164,7 +1143,7 @@ function AdminPage() {
 
   const deleteOrder = async (order) => {
     const confirmed = window.confirm(
-      `Permanently delete order #${order.orderId}?\n\nThis will also delete all photos and files from the server, and cannot be undone.`
+      `למחוק לצמיתות את הזמנה #${order.orderId}?\n\nפעולה זו תמחק גם את כל התמונות והקבצים מהשרת, ולא ניתן לשחזר אותה.`
     );
     if (!confirmed) return;
 
@@ -1173,32 +1152,32 @@ function AdminPage() {
       const { deleteDoc, doc: fsDoc } = await import("firebase/firestore");
       const { ref: storageRef, deleteObject } = await import("firebase/storage");
 
-      // Delete all photos from Storage
+      // מחיקת כל התמונות מ-Storage
       for (const photo of (order.photos || [])) {
         try {
           await deleteObject(storageRef(storage, photo.url));
         } catch (e) {
-          console.error("Error deleting photo:", photo?.name, e);
+          console.error("שגיאה במחיקת תמונה:", photo?.name, e);
         }
       }
 
-      // Delete custom song if present
+      // מחיקת שיר אישי אם קיים
       if (order.customTrackURL) {
         try {
           await deleteObject(storageRef(storage, order.customTrackURL));
         } catch (e) {
-          console.error("Error deleting custom song:", e);
+          console.error("שגיאה במחיקת שיר אישי:", e);
         }
       }
 
-      // Delete order document from Firestore
+      // מחיקת מסמך ההזמנה מ-Firestore
       await deleteDoc(fsDoc(db, "orders", order.id));
 
       setOrders(prev => prev.filter(o => o.id !== order.id));
       setSelectedOrder(prev => (prev?.id === order.id ? null : prev));
     } catch (e) {
-      console.error("Error deleting order:", e);
-      alert("Something went wrong deleting the order. Please try again.");
+      console.error("שגיאה במחיקת הזמנה:", e);
+      alert("אירעה שגיאה במחיקת ההזמנה. נסה שוב.");
     }
     setDeleting(false);
   };
@@ -1208,38 +1187,38 @@ function AdminPage() {
       <div style={{ minHeight: "100vh", background: "#0d0e14", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ background: "#15161f", border: "1px solid #2a2b38", borderRadius: 16, padding: 40, width: 340, textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🔐</div>
-          <h2 style={{ color: "#e8e2d9", marginBottom: 8, fontFamily: "'Playfair Display', serif" }}>Admin Panel</h2>
-          <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>Moments of Life</p>
+          <h2 style={{ color: "#e8e2d9", marginBottom: 8, fontFamily: "'Playfair Display', serif" }}>פאנל ניהול</h2>
+          <p style={{ color: "#6b6c7e", fontSize: 13, marginBottom: 24 }}>רגעים של החיים</p>
           <input
             type="password"
-            placeholder="Password"
+            placeholder="סיסמה"
             value={pass}
             onChange={e => setPass(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && pass === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); } }}
-            style={{ width: "100%", background: "#0d0e14", border: "1px solid #3a3b4a", borderRadius: 8, padding: "11px 14px", color: "#e8e2d9", fontSize: 13, outline: "none", marginBottom: 14 }}
+            style={{ width: "100%", background: "#0d0e14", border: "1px solid #3a3b4a", borderRadius: 8, padding: "11px 14px", color: "#e8e2d9", fontSize: 13, outline: "none", marginBottom: 14, textAlign: "right", direction: "rtl" }}
           />
           <button
-            onClick={() => { if (pass === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); } else alert("Incorrect password"); }}
+            onClick={() => { if (pass === ADMIN_PASSWORD) { setAuthed(true); loadOrders(); } else alert("סיסמה שגויה"); }}
             style={{ width: "100%", background: "linear-gradient(135deg,#c9a84c,#e8c96a)", color: "#0d0e14", border: "none", borderRadius: 40, padding: "12px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
           >
-            Log in
+            כניסה
           </button>
         </div>
       </div>
     );
   }
 
-  const statusColor = { "New": "#c9a84c", "In Progress": "#4a9eff", "Completed": "#5cc97a" };
+  const statusColor = { "חדשה": "#c9a84c", "בטיפול": "#4a9eff", "הושלמה": "#5cc97a" };
 
   const normalize = v => (v == null ? "" : String(v)).toLowerCase();
 
   const filteredOrders = orders.filter(order => {
     const q = normalize(searchQuery).trim();
     if (!q) return true;
-    const dateStr = order.createdAt?.toDate?.()?.toLocaleDateString("en-US") || "";
+    const dateStr = order.createdAt?.toDate?.()?.toLocaleDateString("he-IL") || "";
     const haystack = [
       order.firstName, order.lastName, order.name, order.email, order.phone,
-      order.city, order.streetAddress, order.state, order.zip, order.notes,
+      order.city, order.street, order.houseNumber, order.notes,
       order.package, order.packagePrice, order.style, order.music, order.musicArtist,
       order.status, order.orderId, dateStr,
     ].map(normalize).join(" | ");
@@ -1247,12 +1226,12 @@ function AdminPage() {
   });
 
   return (
-    <div dir="ltr" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif" }}>
+    <div dir="rtl" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif" }}>
       <div style={{ borderBottom: "1px solid #1e1f2e", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: "#c9a84c" }}>🎬 Order Admin Panel</h1>
+        <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: "#c9a84c" }}>🎬 פאנל ניהול הזמנות</h1>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "#6b6c7e" }}>{searchQuery ? `${filteredOrders.length} of ${orders.length}` : `${orders.length} orders`}</span>
-          <button onClick={loadOrders} style={{ background: "#15161f", border: "1px solid #3a3b4a", color: "#e8e2d9", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12 }}>🔄 Refresh</button>
+          <span style={{ fontSize: 12, color: "#6b6c7e" }}>{searchQuery ? `${filteredOrders.length} מתוך ${orders.length}` : `${orders.length} הזמנות`}</span>
+          <button onClick={loadOrders} style={{ background: "#15161f", border: "1px solid #3a3b4a", color: "#e8e2d9", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12 }}>🔄 רענן</button>
         </div>
       </div>
 
@@ -1263,8 +1242,8 @@ function AdminPage() {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by name, phone, email, city, address, date, order number..."
-            style={{ width: "100%", background: "#15161f", border: "1px solid #3a3b4a", borderRadius: 40, padding: "10px 40px 10px 16px", color: "#e8e2d9", fontSize: 13, fontFamily: "'Inter',sans-serif", outline: "none", transition: "border-color 0.2s" }}
+            placeholder="חיפוש לפי שם, משפחה, טלפון, אימייל, עיר, רחוב, תאריך, מספר הזמנה..."
+            style={{ width: "100%", background: "#15161f", border: "1px solid #3a3b4a", borderRadius: 40, padding: "10px 40px 10px 16px", color: "#e8e2d9", fontSize: 13, fontFamily: "'Inter',sans-serif", outline: "none", direction: "rtl", transition: "border-color 0.2s" }}
             onFocus={e => e.target.style.borderColor = "#c9a84c"}
             onBlur={e => e.target.style.borderColor = "#3a3b4a"}
           />
@@ -1273,7 +1252,7 @@ function AdminPage() {
             <button
               onClick={() => setSearchQuery("")}
               style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#6b6c7e", cursor: "pointer", fontSize: 14, padding: 4 }}
-              title="Clear search"
+              title="נקה חיפוש"
             >
               ✕
             </button>
@@ -1284,10 +1263,10 @@ function AdminPage() {
       <div style={{ display: "flex", height: "calc(100vh - 65px)" }}>
 
         {/* Orders list */}
-        <div style={{ width: selectedOrder ? 380 : "100%", borderRight: "1px solid #1e1f2e", overflowY: "auto", padding: 16 }}>
-          {loading && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>Loading orders...</div>}
-          {!loading && orders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>No orders yet</div>}
-          {!loading && orders.length > 0 && filteredOrders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>No results found for "{searchQuery}"</div>}
+        <div style={{ width: selectedOrder ? 380 : "100%", borderLeft: "1px solid #1e1f2e", overflowY: "auto", padding: 16 }}>
+          {loading && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>טוען הזמנות...</div>}
+          {!loading && orders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>אין הזמנות עדיין</div>}
+          {!loading && orders.length > 0 && filteredOrders.length === 0 && <div style={{ textAlign: "center", color: "#6b6c7e", padding: 40 }}>לא נמצאו תוצאות עבור "{searchQuery}"</div>}
           {filteredOrders.map(order => (
             <div
               key={order.id}
@@ -1301,7 +1280,7 @@ function AdminPage() {
               <div style={{ fontSize: 12, color: "#6b6c7e", marginBottom: 4 }}>{order.phone} · {order.package} · {order.packagePrice}</div>
               <div style={{ fontSize: 11, color: "#4a4b5e", display: "flex", justifyContent: "space-between" }}>
                 <span>#{order.orderId}</span>
-                <span>{order.createdAt?.toDate?.()?.toLocaleDateString("en-US") || ""}</span>
+                <span>{order.createdAt?.toDate?.()?.toLocaleDateString("he-IL") || ""}</span>
               </div>
             </div>
           ))}
@@ -1311,22 +1290,22 @@ function AdminPage() {
         {selectedOrder && (
           <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20 }}>Order details #{selectedOrder.orderId}</h2>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20 }}>פרטי הזמנה #{selectedOrder.orderId}</h2>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={() => deleteOrder(selectedOrder)}
                   disabled={deleting}
                   style={{ background: "transparent", border: "1px solid #e05c5c", color: "#e05c5c", borderRadius: 8, padding: "4px 12px", cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.6 : 1, fontSize: 13 }}
                 >
-                  {deleting ? "Deleting..." : "🗑 Delete order"}
+                  {deleting ? "מוחק..." : "🗑 מחק הזמנה"}
                 </button>
-                <button onClick={() => setSelectedOrder(null)} style={{ background: "transparent", border: "1px solid #3a3b4a", color: "#6b6c7e", borderRadius: 8, padding: "4px 12px", cursor: "pointer" }}>✕ Close</button>
+                <button onClick={() => setSelectedOrder(null)} style={{ background: "transparent", border: "1px solid #3a3b4a", color: "#6b6c7e", borderRadius: 8, padding: "4px 12px", cursor: "pointer" }}>✕ סגור</button>
               </div>
             </div>
 
             {/* Status buttons */}
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              {["New", "In Progress", "Completed"].map(s => (
+              {["חדשה", "בטיפול", "הושלמה"].map(s => (
                 <button key={s} onClick={() => updateStatus(selectedOrder.id, s)}
                   style={{ padding: "7px 18px", borderRadius: 20, border: `2px solid ${statusColor[s]}`, background: selectedOrder.status === s ? statusColor[s] : "transparent", color: selectedOrder.status === s ? "#0d0e14" : statusColor[s], fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   {s}
@@ -1337,20 +1316,18 @@ function AdminPage() {
             {/* Details */}
             <div style={{ background: "#15161f", borderRadius: 12, padding: "4px 16px", marginBottom: 20 }}>
               {[
-                ["First name", selectedOrder.firstName || selectedOrder.name || "—"],
-                ["Last name", selectedOrder.lastName || "—"],
-                ["Email", selectedOrder.email || "—"],
-                ["Phone", selectedOrder.phone],
-                ["Street address", selectedOrder.streetAddress || "—"],
-                ["Apt / Unit", selectedOrder.aptUnit || "—"],
-                ["City", selectedOrder.city || "—"],
-                ["State", selectedOrder.state || "—"],
-                ["ZIP", selectedOrder.zip || "—"],
-                ["Package", `${selectedOrder.package} · ${selectedOrder.packagePrice}`],
-                ["Style", selectedOrder.style],
-                ["Music", `${selectedOrder.music} — ${selectedOrder.musicArtist}`],
-                ["Photos", `${selectedOrder.photoCount} photos`],
-                ["Notes", selectedOrder.notes || "—"],
+                ["שם פרטי", selectedOrder.firstName || selectedOrder.name || "—"],
+                ["שם משפחה", selectedOrder.lastName || "—"],
+                ["אימייל", selectedOrder.email || "—"],
+                ["טלפון", selectedOrder.phone],
+                ["עיר", selectedOrder.city || "—"],
+                ["רחוב", selectedOrder.street || "—"],
+                ["מספר בית", selectedOrder.houseNumber || "—"],
+                ["חבילה", `${selectedOrder.package} · ${selectedOrder.packagePrice}`],
+                ["סגנון", selectedOrder.style],
+                ["מוזיקה", `${selectedOrder.music} — ${selectedOrder.musicArtist}`],
+                ["תמונות", `${selectedOrder.photoCount} תמונות`],
+                ["הערות", selectedOrder.notes || "—"],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #2a2b38", fontSize: 13 }}>
                   <span style={{ color: "#6b6c7e" }}>{k}</span>
@@ -1361,26 +1338,26 @@ function AdminPage() {
 
             {/* Photos */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, color: "#c9a84c" }}>Photos ({selectedOrder.photoCount})</h3>
+              <h3 style={{ fontSize: 14, color: "#c9a84c" }}>תמונות ({selectedOrder.photoCount})</h3>
               <button
                 onClick={async () => {
                   try {
-                    // Try the File System Access API (Chrome/Edge)
+                    // נסה להשתמש ב-File System Access API (Chrome/Edge)
                     if (window.showDirectoryPicker) {
                       const dirHandle = await window.showDirectoryPicker();
                       for (const photo of (selectedOrder.photos || [])) {
                         try {
                           const res = await fetch(photo.url);
                           const blob = await res.blob();
-                          const fileHandle = await dirHandle.getFileHandle(`photo-${photo.index}.jpg`, { create: true });
+                          const fileHandle = await dirHandle.getFileHandle(`תמונה-${photo.index}.jpg`, { create: true });
                           const writable = await fileHandle.createWritable();
                           await writable.write(blob);
                           await writable.close();
                         } catch(e) { console.error(e); }
                       }
-                      alert(`✅ All photos were downloaded successfully to the folder you chose!`);
+                      alert(`✅ כל התמונות הורדו בהצלחה לתיקייה שבחרת!`);
                     } else {
-                      // fallback for older browsers
+                      // fallback לדפדפנים ישנים
                       for (let i = 0; i < (selectedOrder.photos || []).length; i++) {
                         const photo = selectedOrder.photos[i];
                         const res = await fetch(photo.url);
@@ -1388,7 +1365,7 @@ function AdminPage() {
                         const blobUrl = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = blobUrl;
-                        a.download = `photo-${photo.index}.jpg`;
+                        a.download = `תמונה-${photo.index}.jpg`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
@@ -1397,20 +1374,20 @@ function AdminPage() {
                       }
                     }
                   } catch(e) {
-                    if (e.name !== 'AbortError') alert("Download error: " + e.message);
+                    if (e.name !== 'AbortError') alert("שגיאה בהורדה: " + e.message);
                   }
                 }}
                 style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
               >
-                ⬇️ Download all photos
+                ⬇️ הורד את כל התמונות
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 20 }}>
               {(selectedOrder.photos || []).map((photo, i) => (
                 <a key={i} href={photo.url} target="_blank" rel="noopener noreferrer"
                   style={{ display: "block", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2b38", textDecoration: "none" }}>
-                  <img src={photo.url} alt={`Photo ${photo.index}`} style={{ width: "100%", height: 100, objectFit: "cover", display: "block" }} />
-                  <div style={{ padding: "4px 8px", fontSize: 10, color: "#6b6c7e", background: "#15161f" }}>Photo {photo.index} ↗</div>
+                  <img src={photo.url} alt={`תמונה ${photo.index}`} style={{ width: "100%", height: 100, objectFit: "cover", display: "block" }} />
+                  <div style={{ padding: "4px 8px", fontSize: 10, color: "#6b6c7e", background: "#15161f" }}>תמונה {photo.index} ↗</div>
                 </a>
               ))}
             </div>
@@ -1418,11 +1395,11 @@ function AdminPage() {
             {/* Scene notes */}
             {selectedOrder.sceneNotes && selectedOrder.sceneNotes.some(n => n) && (
               <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>Notes between photos</h3>
+                <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>הערות בין תמונות</h3>
                 <div style={{ background: "#15161f", borderRadius: 12, padding: "4px 16px" }}>
                   {selectedOrder.sceneNotes.map((note, i) => note ? (
                     <div key={i} style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid #2a2b38", fontSize: 13 }}>
-                      <span style={{ color: "#6b6c7e", flexShrink: 0 }}>After photo {i + 1}:</span>
+                      <span style={{ color: "#6b6c7e", flexShrink: 0 }}>אחרי תמונה {i + 1}:</span>
                       <span style={{ color: "#e8e2d9" }}>{note}</span>
                     </div>
                   ) : null)}
@@ -1433,7 +1410,7 @@ function AdminPage() {
             {/* Custom track */}
             {selectedOrder.customTrackURL && (
               <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>Custom song</h3>
+                <h3 style={{ fontSize: 14, color: "#c9a84c", marginBottom: 12 }}>שיר אישי</h3>
                 <div style={{ background: "#15161f", borderRadius: 12, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ color: "#e8e2d9", fontSize: 13 }}>{selectedOrder.music}</span>
                   <button
@@ -1460,12 +1437,12 @@ function AdminPage() {
                           URL.revokeObjectURL(blobUrl);
                         }
                       } catch(e) {
-                        if (e.name !== 'AbortError') alert("Download error: " + e.message);
+                        if (e.name !== 'AbortError') alert("שגיאה בהורדה: " + e.message);
                       }
                     }}
                     style={{ fontSize: 12, color: "#4a9eff", cursor: "pointer", background: "rgba(74,158,255,0.1)", padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(74,158,255,0.3)" }}
                   >
-                    ⬇️ Download song
+                    ⬇️ הורד שיר
                   </button>
                 </div>
               </div>
@@ -1499,7 +1476,7 @@ function MainApp() {
   return (
     <>
       <style>{STYLES}</style>
-      <div dir="ltr" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif" }}>
+      <div dir="rtl" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif" }}>
 
         {/* Header */}
         <div style={{ borderBottom: "1px solid #1e1f2e", padding: "20px 24px", maxWidth: 860, margin: "0 auto", position: "relative" }}>
@@ -1507,7 +1484,7 @@ function MainApp() {
           <div style={{ display: "flex", justifyContent: "center", cursor: pkg ? "pointer" : "default" }} onClick={() => { if (pkg) { setPkg(null); } }}>
             <img
               src="/logo.png"
-              alt="Moments of Life"
+              alt="רגעים של החיים"
               style={{ height: 160, width: "auto", mixBlendMode: "screen", filter: "brightness(1.1)" }}
             />
           </div>
@@ -1515,10 +1492,10 @@ function MainApp() {
           {pkg && (
             <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 10 }}>
               <div style={{ fontSize: 11, color: "#6b6c7e", background: "#15161f", border: "1px solid #2a2b38", borderRadius: 20, padding: "3px 10px" }}>
-                {pkg.name} package · {pkg.price}
+                חבילת {pkg.name} · {pkg.price}
               </div>
               <div style={{ fontSize: 11, color: "#6b6c7e", background: "#15161f", border: "1px solid #2a2b38", borderRadius: 20, padding: "3px 10px" }}>
-                Step {step + 1} of 4
+                שלב {step + 1} מתוך 4
               </div>
             </div>
           )}
@@ -1541,8 +1518,6 @@ function MainApp() {
       </div>
 
       {/* WhatsApp floating button */}
-      {/* NOTE for US launch: this Israeli WhatsApp number (+972...) should be replaced
-          with a US contact number/WhatsApp Business number, or swapped for SMS/live chat. */}
       <a
         href="https://wa.me/972508490098"
         target="_blank"
@@ -1556,7 +1531,7 @@ function MainApp() {
         }}
         onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 6px 28px rgba(37,211,102,0.7)"; }}
         onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(37,211,102,0.5)"; }}
-        title="Message us on WhatsApp"
+        title="שלח הודעה בוואטסאפ"
       >
         <svg width="28" height="28" viewBox="0 0 32 32" fill="white">
           <path d="M16 2C8.28 2 2 8.28 2 16c0 2.52.68 4.88 1.86 6.92L2 30l7.3-1.84A13.94 13.94 0 0016 30c7.72 0 14-6.28 14-14S23.72 2 16 2zm0 25.5a11.44 11.44 0 01-5.84-1.6l-.42-.25-4.34 1.1 1.12-4.22-.27-.44A11.5 11.5 0 1116 27.5zm6.3-8.62c-.34-.17-2.02-1-2.34-1.1-.32-.12-.56-.17-.8.17-.23.34-.9 1.1-1.1 1.34-.2.22-.4.25-.74.08-.34-.17-1.44-.53-2.74-1.7-1.01-.9-1.7-2.02-1.9-2.36-.2-.34-.02-.52.15-.7.15-.15.34-.4.5-.6.17-.2.23-.34.34-.56.12-.23.06-.43-.02-.6-.08-.17-.8-1.93-1.1-2.64-.28-.68-.58-.58-.8-.6h-.68c-.23 0-.6.08-.9.43-.32.34-1.2 1.17-1.2 2.86s1.23 3.32 1.4 3.55c.17.22 2.42 3.7 5.86 5.18.82.35 1.46.56 1.96.72.82.26 1.57.22 2.16.13.66-.1 2.02-.82 2.3-1.62.28-.8.28-1.48.2-1.62-.08-.14-.3-.22-.64-.4z"/>
@@ -1581,17 +1556,16 @@ function PaymentReturn({ lowProfileCode }) {
           setOrderInfo(data);
           setStatus(data.success ? "success" : "failed");
 
-          // Real Meta Pixel conversion event — fires only here, after payment is
-          // actually verified with the payment processor (so only real paying
-          // customers count as a Purchase).
+          // אירוע המרה אמיתי ל-Meta Pixel — יורה רק כאן, אחרי אימות תשלום בפועל מול Invoice4U
+          // (לא בשליחת הטופס, כדי שרק מי ששילם באמת ייספר כרכישה)
           if (data.success) {
             try {
               if (window.fbq) {
                 const cleanValue = Number(String(data.packagePrice || "").replace(/[^\d.]/g, "")) || 0;
                 window.fbq("track", "Purchase", {
                   value: cleanValue,
-                  currency: "USD",
-                  content_name: data.packageName || "Moments of Life package",
+                  currency: "ILS",
+                  content_name: data.packageName || "חבילת רגעים של החיים",
                   content_type: "product",
                 });
               }
@@ -1612,38 +1586,38 @@ function PaymentReturn({ lowProfileCode }) {
   return (
     <>
       <style>{STYLES}</style>
-      <div dir="ltr" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div dir="rtl" style={{ minHeight: "100vh", background: "#0d0e14", color: "#e8e2d9", fontFamily: "'Inter',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ maxWidth: 440, width: "100%", textAlign: "center", background: "#15161f", border: "1px solid #2a2b38", borderRadius: 16, padding: "40px 28px" }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-            <img src="/logo.png" alt="Moments of Life" style={{ height: 80, width: "auto", mixBlendMode: "screen", filter: "brightness(1.1)" }} />
+            <img src="/logo.png" alt="רגעים של החיים" style={{ height: 80, width: "auto", mixBlendMode: "screen", filter: "brightness(1.1)" }} />
           </div>
 
           {status === "checking" && (
             <>
               <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>Verifying your payment...</h2>
-              <p style={{ color: "#8a8b9e", fontSize: 14 }}>One moment, we're checking the transaction status with the payment processor.</p>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>מאמתים את התשלום שלך...</h2>
+              <p style={{ color: "#8a8b9e", fontSize: 14 }}>רגע אחד, אנחנו בודקים את סטטוס העסקה מול חברת הסליקה.</p>
             </>
           )}
 
           {status === "success" && (
             <>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8, color: "#c9a84c" }}>Payment received!</h2>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8, color: "#c9a84c" }}>התשלום התקבל בהצלחה!</h2>
               <p style={{ color: "#8a8b9e", fontSize: 14, lineHeight: 1.7 }}>
-                {orderInfo?.firstName ? `Thank you, ${orderInfo.firstName}! ` : ""}
-                We've received your payment for {orderInfo?.packageName || "your order"}. We're already getting to work on your video and will be in touch soon.
+                {orderInfo?.firstName ? `תודה ${orderInfo.firstName}! ` : ""}
+                קיבלנו את התשלום עבור {orderInfo?.packageName || "ההזמנה שלך"}. אנחנו כבר מתחילים לעבוד על הסרטון וניצור איתך קשר בהקדם.
               </p>
-              <p style={{ color: "#6b6c7e", fontSize: 12 }}>⏱ Estimated delivery: within 14 business days</p>
+              <p style={{ color: "#6b6c7e", fontSize: 12 }}>⏱ זמן הגעת המשלוח: עד 14 ימי עסקים</p>
             </>
           )}
 
           {status === "failed" && (
             <>
               <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>Payment not completed</h2>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>התשלום לא הושלם</h2>
               <p style={{ color: "#8a8b9e", fontSize: 14, lineHeight: 1.7 }}>
-                It looks like the payment didn't go through. You can try again, or reach out to us and we'll help you complete your order.
+                נראה שהתשלום לא עבר בהצלחה. אפשר לנסות שוב, או ליצור איתנו קשר בוואטסאפ ונעזור לך להשלים את ההזמנה.
               </p>
             </>
           )}
@@ -1651,9 +1625,9 @@ function PaymentReturn({ lowProfileCode }) {
           {status === "error" && (
             <>
               <div style={{ fontSize: 40, marginBottom: 12 }}>🤔</div>
-              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>We couldn't verify the payment</h2>
+              <h2 className="serif" style={{ fontSize: 22, marginBottom: 8 }}>לא הצלחנו לאמת את התשלום</h2>
               <p style={{ color: "#8a8b9e", fontSize: 14, lineHeight: 1.7 }}>
-                If you were actually charged, don't worry - we'll reach out to confirm your order. You can also contact us directly.
+                אם בוצע חיוב בפועל, אין דאגה - ניצור איתך קשר לוודא את ההזמנה. אפשר גם לפנות אלינו בוואטסאפ.
               </p>
             </>
           )}
@@ -1664,7 +1638,7 @@ function PaymentReturn({ lowProfileCode }) {
             rel="noopener noreferrer"
             style={{ display: "inline-block", marginTop: 20, color: "#c9a84c", fontSize: 13, textDecoration: "underline" }}
           >
-            Contact us
+            צור קשר בוואטסאפ
           </a>
         </div>
       </div>
