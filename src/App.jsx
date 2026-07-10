@@ -949,11 +949,16 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
         musicArtist: music === "custom" ? "העלאה אישית" : (trackObj?.artist || ""),
         customTrackURL: customTrackURL || "",
         status: "חדשה",
+        // אם התשלום המקוון מופעל - ההזמנה נחשבת "ממתין לתשלום" עד שהתשלום יאומת בפועל
+        // (ב-check-payment-status.js). אם התשלום המקוון כבוי - אין שלב תשלום נפרד, אז ההזמנה נחשבת התקבלה.
+        paymentStatus: PAYMENT_INTEGRATION_ENABLED ? "ממתין לתשלום" : "לא רלוונטי (תשלום מול הספק)",
         createdAt: serverTimestamp(),
       });
 
-      // 4. שליחת מייל אישור ללקוח + מייל התראה לבעל העסק
-      await Promise.all([
+      // 4. שליחת מייל אישור ללקוח תמיד; מייל התראה לבעל העסק רק אם אין שלב תשלום נפרד
+      // (אם התשלום המקוון מופעל, מייל האדמין יישלח רק אחרי שהתשלום יאומת בפועל - ב-check-payment-status.js,
+      // כדי שלא יגיע דיווח על "הזמנה חדשה" ללקוח שבסוף לא באמת שילם)
+      const emailsToSend = [
         sendEmail(EMAILJS_TEMPLATE_CUSTOMER, {
           to_email: email,
           first_name: firstName,
@@ -962,22 +967,27 @@ function StepSummary({ pkg, photos, sceneNotes, style, music, customTrack, onBac
           package_name: pkg.name,
           package_price: pkg.price,
         }),
-        sendEmail(EMAILJS_TEMPLATE_ADMIN, {
-          to_email: ADMIN_EMAIL,
-          first_name: firstName,
-          last_name: lastName,
-          customer_email: email,
-          phone,
-          city,
-          street,
-          house_number: houseNumber,
-          order_id: orderId,
-          package_name: pkg.name,
-          package_price: pkg.price,
-          photo_count: photos.length,
-          notes: notes || "—",
-        }),
-      ]);
+      ];
+      if (!PAYMENT_INTEGRATION_ENABLED) {
+        emailsToSend.push(
+          sendEmail(EMAILJS_TEMPLATE_ADMIN, {
+            to_email: ADMIN_EMAIL,
+            first_name: firstName,
+            last_name: lastName,
+            customer_email: email,
+            phone,
+            city,
+            street,
+            house_number: houseNumber,
+            order_id: orderId,
+            package_name: pkg.name,
+            package_price: pkg.price,
+            photo_count: photos.length,
+            notes: notes || "—",
+          })
+        );
+      }
+      await Promise.all(emailsToSend);
 
       // 5. הפניה לתשלום (רק אם האינטגרציה מופעלת - ראו מתג הבטיחות בראש הקובץ)
       if (PAYMENT_INTEGRATION_ENABLED) {

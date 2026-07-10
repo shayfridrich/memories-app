@@ -9,6 +9,50 @@
 //
 // משתני סביבה נדרשים:
 //   INVOICE4U_API_KEY, INVOICE4U_API_BASE, FIREBASE_SERVICE_ACCOUNT_KEY (כמו create-payment.js)
+//
+// עדכון: מייל ההתראה לבעל העסק (ADMIN) עבר לכאן - נשלח רק אחרי שהתשלום אומת בפועל כ"שולם",
+// לא בשליחת הטופס. כך אם לקוח מתחיל הזמנה ולא משלים תשלום, בעל העסק לא מקבל התראה שגויה
+// על "הזמנה חדשה". ראו הגנת אידמפוטנטיות למטה (לא שולחים שוב אם כבר סומן כ"שולם" בעבר).
+
+// אותם פרטי EmailJS כמו ב-src/App.jsx (המפתח הציבורי חשוף גם בקוד הלקוח, אין בו סוד)
+const EMAILJS_PUBLIC_KEY = "NE3YZm-vpQZyEQ9hL";
+const EMAILJS_SERVICE_ID = "service_qbik3ut";
+const EMAILJS_TEMPLATE_ADMIN = "template_5cg5t9l";
+const ADMIN_EMAIL = "momentsoflife.770@gmail.com";
+
+async function sendAdminPaidEmail(order) {
+  try {
+    const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ADMIN,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: {
+          to_email: ADMIN_EMAIL,
+          first_name: order.firstName || "",
+          last_name: order.lastName || "",
+          customer_email: order.email || "",
+          phone: order.phone || "",
+          city: order.city || "",
+          street: order.street || "",
+          house_number: order.houseNumber || "",
+          order_id: order.orderId || "",
+          package_name: order.package || "",
+          package_price: order.packagePrice || "",
+          photo_count: order.photoCount || 0,
+          notes: order.notes || "—",
+        },
+      }),
+    });
+    if (!res.ok) {
+      console.error("שגיאה בשליחת מייל אדמין (תשלום אושר):", await res.text());
+    }
+  } catch (e) {
+    console.error("שגיאת רשת בשליחת מייל אדמין (תשלום אושר):", e);
+  }
+}
 
 const { db, FieldValue } = require("./_firebaseAdmin.js");
 
@@ -60,12 +104,18 @@ module.exports = async (req, res) => {
     }
 
     const isSuccess = log.IsSuccess === true;
+    const wasAlreadyPaid = order.paymentStatus === "שולם";
 
     await doc.ref.update({
       paymentStatus: isSuccess ? "שולם" : "נכשל",
       paymentVerifiedAt: FieldValue.serverTimestamp(),
       paymentVerificationRaw: log,
     });
+
+    // שולחים מייל התראה לבעל העסק רק כשהתשלום מאושר לראשונה (לא בכל רענון/בדיקה חוזרת)
+    if (isSuccess && !wasAlreadyPaid) {
+      await sendAdminPaidEmail(order);
+    }
 
     return res.status(200).json({
       success: isSuccess,
