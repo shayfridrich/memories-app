@@ -1237,7 +1237,7 @@ function AdminPage() {
     const dateStr = order.createdAt?.toDate?.()?.toLocaleDateString("he-IL") || "";
     const haystack = [
       order.firstName, order.lastName, order.name, order.email, order.phone,
-      order.city, order.street, order.houseNumber, order.notes,
+      order.city, order.street, order.houseNumber, order.streetAddress, order.aptUnit, order.state, order.zip, order.notes,
       order.package, order.packagePrice, order.style, order.music, order.musicArtist,
       order.status, order.paymentStatus, order.orderId, dateStr,
     ].map(normalize).join(" | ");
@@ -1347,14 +1347,16 @@ function AdminPage() {
                 ["אימייל", selectedOrder.email || "—"],
                 ["טלפון", selectedOrder.phone],
                 ["עיר", selectedOrder.city || "—"],
-                ["רחוב", selectedOrder.street || "—"],
-                ["מספר בית", selectedOrder.houseNumber || "—"],
+                selectedOrder.streetAddress
+                  ? ["כתובת (ארה״ב)", [selectedOrder.streetAddress, selectedOrder.aptUnit, selectedOrder.state, selectedOrder.zip].filter(Boolean).join(", ") || "—"]
+                  : ["רחוב", selectedOrder.street || "—"],
+                selectedOrder.streetAddress ? null : ["מספר בית", selectedOrder.houseNumber || "—"],
                 ["חבילה", `${selectedOrder.package} · ${selectedOrder.packagePrice}`],
                 ["סגנון", selectedOrder.style],
                 ["מוזיקה", `${selectedOrder.music} — ${selectedOrder.musicArtist}`],
                 ["תמונות", `${selectedOrder.photoCount} תמונות`],
                 ["הערות", selectedOrder.notes || "—"],
-              ].map(([k, v]) => (
+              ].filter(Boolean).map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #2a2b38", fontSize: 13 }}>
                   <span style={{ color: "#6b6c7e" }}>{k}</span>
                   <span style={{ color: "#e8e2d9", fontWeight: 500 }}>{v}</span>
@@ -1673,11 +1675,4 @@ function PaymentReturn({ lowProfileCode }) {
 }
 
 export default function App() {
-  if (window.location.search.includes("admin=true")) return <AdminPage />;
-
-  const params = new URLSearchParams(window.location.search);
-  const lowProfileCode = params.get("lowprofilecode") || params.get("lowProfileCode") || params.get("LowProfileCode");
-  if (lowProfileCode) return <PaymentReturn lowProfileCode={lowProfileCode} />;
-
-  return <MainApp />;
-}
+  if (window.location.s
