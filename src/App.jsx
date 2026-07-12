@@ -1675,4 +1675,11 @@ function PaymentReturn({ lowProfileCode }) {
 }
 
 export default function App() {
-  if (window.location.s
+  if (window.location.search.includes("admin=true")) return <AdminPage />;
+
+  const params = new URLSearchParams(window.location.search);
+  const lowProfileCode = params.get("lowprofilecode") || params.get("lowProfileCode") || params.get("LowProfileCode");
+  if (lowProfileCode) return <PaymentReturn lowProfileCode={lowProfileCode} />;
+
+  return <MainApp />;
+}
