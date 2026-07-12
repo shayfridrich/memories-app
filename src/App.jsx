@@ -1348,7 +1348,12 @@ function AdminPage() {
                 ["טלפון", selectedOrder.phone],
                 ["עיר", selectedOrder.city || "—"],
                 selectedOrder.streetAddress
-                  ? ["כתובת (ארה״ב)", [selectedOrder.streetAddress, selectedOrder.aptUnit, selectedOrder.state, selectedOrder.zip].filter(Boolean).join(", ") || "—"]
+                  ? ["כתובת (ארה״ב)", [
+                      selectedOrder.streetAddress ? `רחוב: ${selectedOrder.streetAddress}` : null,
+                      selectedOrder.aptUnit ? `דירה: ${selectedOrder.aptUnit}` : null,
+                      selectedOrder.state ? `מדינה: ${selectedOrder.state}` : null,
+                      selectedOrder.zip ? `מיקוד: ${selectedOrder.zip}` : null,
+                    ].filter(Boolean).join(" | ") || "—"]
                   : ["רחוב", selectedOrder.street || "—"],
                 selectedOrder.streetAddress ? null : ["מספר בית", selectedOrder.houseNumber || "—"],
                 ["חבילה", `${selectedOrder.package} · ${selectedOrder.packagePrice}`],
